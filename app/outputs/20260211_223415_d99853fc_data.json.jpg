@@ -1,0 +1,50 @@
+{
+  "image_info": {
+    "width": 640,
+    "height": 640,
+    "channels": 3,
+    "dtype": "uint8",
+    "shape": [
+      640,
+      640,
+      3
+    ]
+  },
+  "statistics": {
+    "total_detections": 2,
+    "detections_by_class": {
+      "D00 - Longitudinal Crack": 2
+    },
+    "average_confidence": 0.352,
+    "inference_time": 0.373,
+    "inference_time_formatted": "0.37s"
+  },
+  "detections": {
+    "boxes": [
+      [
+        235.66534423828125,
+        401.564453125,
+        297.6335754394531,
+        585.7449340820312
+      ],
+      [
+        242.11404418945312,
+        425.3782043457031,
+        291.505615234375,
+        584.2566528320312
+      ]
+    ],
+    "scores": [
+      0.4329448640346527,
+      0.27051350474357605
+    ],
+    "classes": [
+      0,
+      0
+    ],
+    "class_names": [
+      "D00 - Longitudinal Crack",
+      "D00 - Longitudinal Crack"
+    ]
+  }
+}

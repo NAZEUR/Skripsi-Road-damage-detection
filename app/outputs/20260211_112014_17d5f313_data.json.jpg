@@ -1,0 +1,27 @@
+{
+  "image_info": {
+    "width": 275,
+    "height": 183,
+    "channels": 3,
+    "dtype": "uint8",
+    "shape": [
+      183,
+      275,
+      3
+    ]
+  },
+  "statistics": {
+    "total_detections": 0,
+    "detections_by_class": {},
+    "average_confidence": 0.0,
+    "inference_time": 0.468,
+    "inference_time_formatted": "0.47s",
+    "num_slices": 1
+  },
+  "detections": {
+    "boxes": [],
+    "scores": [],
+    "classes": [],
+    "class_names": []
+  }
+}

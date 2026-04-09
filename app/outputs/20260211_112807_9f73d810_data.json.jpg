@@ -1,0 +1,52 @@
+{
+  "image_info": {
+    "width": 640,
+    "height": 640,
+    "channels": 3,
+    "dtype": "uint8",
+    "shape": [
+      640,
+      640,
+      3
+    ]
+  },
+  "statistics": {
+    "total_detections": 2,
+    "detections_by_class": {
+      "D20 - Alligator Crack": 1,
+      "D00 - Longitudinal Crack": 1
+    },
+    "average_confidence": 0.603,
+    "inference_time": 1.574,
+    "inference_time_formatted": "1.57s",
+    "num_slices": 4
+  },
+  "detections": {
+    "boxes": [
+      [
+        35.577392578125,
+        452.4217529296875,
+        436.7303161621094,
+        639.9514770507812
+      ],
+      [
+        52.11458969116211,
+        467.2647705078125,
+        222.8903045654297,
+        633.2008666992188
+      ]
+    ],
+    "scores": [
+      0.6746830940246582,
+      0.5318469405174255
+    ],
+    "classes": [
+      2,
+      0
+    ],
+    "class_names": [
+      "D20 - Alligator Crack",
+      "D00 - Longitudinal Crack"
+    ]
+  }
+}

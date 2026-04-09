@@ -1,0 +1,52 @@
+{
+  "image_info": {
+    "width": 640,
+    "height": 640,
+    "channels": 3,
+    "dtype": "uint8",
+    "shape": [
+      640,
+      640,
+      3
+    ]
+  },
+  "statistics": {
+    "total_detections": 2,
+    "detections_by_class": {
+      "D20 - Alligator Crack": 1,
+      "D40 - Pothole": 1
+    },
+    "average_confidence": 0.376,
+    "inference_time": 1.616,
+    "inference_time_formatted": "1.62s",
+    "num_slices": 4
+  },
+  "detections": {
+    "boxes": [
+      [
+        0.6548563241958618,
+        430.45855712890625,
+        491.66436767578125,
+        631.7225952148438
+      ],
+      [
+        228.27342224121094,
+        486.4112243652344,
+        266.5500793457031,
+        506.898193359375
+      ]
+    ],
+    "scores": [
+      0.4547414481639862,
+      0.29788938164711
+    ],
+    "classes": [
+      2,
+      3
+    ],
+    "class_names": [
+      "D20 - Alligator Crack",
+      "D40 - Pothole"
+    ]
+  }
+}
