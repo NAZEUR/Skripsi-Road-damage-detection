@@ -4,17 +4,32 @@
 
 {% block content %}
 <!-- Main Container -->
-<div class="app-container">
+<div class="app-container" id="appContainer">
     <!-- Top Header -->
     <header class="app-header">
         <div class="header-left">
             <div class="app-logo">
                 <i class="bi bi-shield-fill-check"></i>
             </div>
-            <h1 class="app-title">Road Damage Detection - Undergraduate Thesis System</h1>
+            <h1 class="app-title" data-i18n="app.title">Road Damage Detection - Undergraduate Thesis System</h1>
         </div>
         <div class="header-right">
-            <span class="user-label">User: [Student Name]</span>
+            <!-- Language Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle btn-sm rounded-pill px-3" type="button" id="languageDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-translate"></i> <span id="currentLangLabel">EN</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" aria-labelledby="languageDropdown">
+                    <li><a class="dropdown-item" href="#" onclick="setLanguage('en'); return false;">English</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="setLanguage('id'); return false;">Bahasa Indonesia</a></li>
+                </ul>
+            </div>
+            <!-- Theme Toggle -->
+            <button class="btn btn-icon theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">
+                <i class="bi bi-moon-stars" id="themeIcon"></i>
+            </button>
+            <div class="user-divider"></div>
+            <span class="user-label" data-i18n="user.label">User: [Student Name]</span>
             <div class="user-avatar">
                 <i class="bi bi-person-circle"></i>
             </div>
@@ -31,54 +46,54 @@
                 </button>
             </div>
             <div class="sidebar-section">
-                <h3 class="sidebar-title">INPUT CONFIGURATION</h3>
+                <h3 class="sidebar-title" data-i18n="sidebar.input_config">INPUT CONFIGURATION</h3>
                 
                 <!-- Upload Zone -->
                 <div id="dropZone" class="upload-box">
                     <div class="upload-icon">
                         <i class="bi bi-cloud-upload"></i>
                     </div>
-                    <p class="upload-label">Road Imagery</p>
-                    <p class="upload-hint">JPG/PNG, Max 10MB</p>
+                    <p class="upload-label" data-i18n="upload.label">Road Imagery</p>
+                    <p class="upload-hint" data-i18n="upload.hint">JPG/PNG, Max 10MB</p>
                     <input type="file" id="fileInput" class="d-none" accept=".jpg,.jpeg,.png,.bmp">
                 </div>
 
                 <!-- File Info (shown after upload) -->
                 <div id="fileInfo" class="file-info-box d-none">
                     <div class="info-row">
-                        <span class="info-label">File:</span>
+                        <span class="info-label" data-i18n="info.file">File:</span>
                         <span class="info-value" id="fileName">-</span>
                     </div>
                     <div class="info-row">
-                        <span class="info-label">Size:</span>
+                        <span class="info-label" data-i18n="info.size">Size:</span>
                         <span class="info-value" id="fileSize">-</span>
                     </div>
                     <div class="info-row">
-                        <span class="info-label">Resolution:</span>
+                        <span class="info-label" data-i18n="info.resolution">Resolution:</span>
                         <span class="info-value" id="fileResolution">-</span>
                     </div>
                     <button class="btn-clear" onclick="clearUpload()">
-                        <i class="bi bi-x-circle"></i> Clear
+                        <i class="bi bi-x-circle"></i> <span data-i18n="btn.clear">Clear</span>
                     </button>
                 </div>
             </div>
 
             <!-- Detection Model -->
             <div class="sidebar-section">
-                <h3 class="sidebar-title">DETECTION MODEL</h3>
+                <h3 class="sidebar-title" data-i18n="sidebar.model">DETECTION MODEL</h3>
                 <div class="model-selector">
                     <label class="model-option">
                         <input type="radio" name="detectionMode" value="baseline" checked>
                         <span class="model-box">
                             <strong>YOLOv11</strong>
-                            <small>(Baseline)</small>
+                            <small data-i18n="model.baseline">(Baseline)</small>
                         </span>
                     </label>
                     <label class="model-option">
                         <input type="radio" name="detectionMode" value="sahi">
                         <span class="model-box">
                             <strong>SAHI</strong>
-                            <small>(Sliced Inference)</small>
+                            <small data-i18n="model.sahi">(Sliced Inference)</small>
                         </span>
                     </label>
                 </div>
@@ -86,7 +101,7 @@
 
             <!-- Confidence Threshold -->
             <div class="sidebar-section">
-                <h3 class="sidebar-title">CONFIDENCE THRESHOLD</h3>
+                <h3 class="sidebar-title" data-i18n="sidebar.confidence">CONFIDENCE THRESHOLD</h3>
                 <div class="slider-value-display">
                     <span id="confidenceValue">25</span>%
                 </div>
@@ -102,7 +117,7 @@
             <!-- SAHI Parameters (hidden by default) -->
             <div id="sahiParams" class="d-none">
                 <div class="sidebar-section">
-                    <h3 class="sidebar-title">SLICE SIZE</h3>
+                    <h3 class="sidebar-title" data-i18n="sidebar.slice">SLICE SIZE</h3>
                     <div class="slider-value-display">
                         <span id="sliceSizeValue">640</span>px
                     </div>
@@ -116,7 +131,7 @@
                 </div>
 
                 <div class="sidebar-section">
-                    <h3 class="sidebar-title">OVERLAP RATIO</h3>
+                    <h3 class="sidebar-title" data-i18n="sidebar.overlap">OVERLAP RATIO</h3>
                     <div class="slider-value-display">
                         <span id="overlapValue">0.20</span>
                     </div>
@@ -130,7 +145,7 @@
                 </div>
 
                 <div class="sidebar-section">
-                    <h3 class="sidebar-title">MATCH THRESHOLD</h3>
+                    <h3 class="sidebar-title" data-i18n="sidebar.match">MATCH THRESHOLD</h3>
                     <div class="slider-value-display">
                         <span id="matchValue">0.50</span>
                     </div>
@@ -147,18 +162,18 @@
             <!-- Run Analysis Button -->
             <button id="runAnalysisBtn" class="btn-run-analysis" onclick="runDetection()" disabled>
                 <i class="bi bi-play-circle-fill"></i>
-                Run Analysis
+                <span data-i18n="btn.run">Run Analysis</span>
             </button>
 
             <!-- System Status -->
             <div class="system-status">
                 <div class="status-item">
                     <i class="bi bi-circle-fill text-success"></i>
-                    <span>System Status: <strong>Online</strong></span>
+                    <span><span data-i18n="status.system">System Status: </span><strong data-i18n="status.online">Online</strong></span>
                 </div>
                 <div class="status-item">
                     <i class="bi bi-gpu-card"></i>
-                    <span id="gpuStatus">GPU: <strong>Checking...</strong></span>
+                    <span id="gpuStatus"><span data-i18n="status.gpu">GPU: </span><strong>Checking...</strong></span>
                 </div>
             </div>
         </aside>
@@ -176,8 +191,8 @@
                     </button>
                 </div>
                 <div class="header-labels">
-                    <div class="label-box">ORIGINAL IMAGE PREVIEW</div>
-                    <div class="label-box">DETECTION RESULT</div>
+                    <div class="label-box" data-i18n="header.original">ORIGINAL IMAGE PREVIEW</div>
+                    <div class="label-box highlight-label" data-i18n="header.result">DETECTION RESULT</div>
                 </div>
             </div>
 
@@ -187,10 +202,10 @@
                 <div class="image-panel">
                     <div id="originalImageContainer" class="image-container">
                         <div id="emptyState" class="empty-state">
-                            <i class="bi bi-image"></i>
-                            <p>No image uploaded</p>
+                            <div class="icon-circle"><i class="bi bi-image"></i></div>
+                            <p data-i18n="empty.original">No image uploaded</p>
                             <button class="btn-upload-small" onclick="document.getElementById('fileInput').click()">
-                                Upload Image
+                                <i class="bi bi-upload"></i> <span data-i18n="btn.upload">Upload Image</span>
                             </button>
                         </div>
                         <img id="originalImage" class="display-image d-none" alt="Original">
@@ -201,8 +216,8 @@
                 <div class="image-panel">
                     <div id="resultImageContainer" class="image-container">
                         <div id="resultEmptyState" class="empty-state">
-                            <i class="bi bi-search"></i>
-                            <p>Detection not run yet</p>
+                            <div class="icon-circle result-icon"><i class="bi bi-magic"></i></div>
+                            <p data-i18n="empty.result">Detection not run yet</p>
                         </div>
                         <img id="resultImage" class="display-image d-none" alt="Result">
                         
@@ -213,7 +228,7 @@
                                     <span class="visually-hidden">Loading...</span>
                                 </div>
                             </div>
-                            <p class="loading-text">Processing detection...</p>
+                            <p class="loading-text" data-i18n="loading.text">Processing detection...</p>
                         </div>
                     </div>
                 </div>
@@ -245,18 +260,18 @@
             </div>
             <!-- Session Analysis -->
             <div class="sidebar-section">
-                <h3 class="sidebar-title">SESSION ANALYSIS</h3>
+                <h3 class="sidebar-title" data-i18n="sidebar.session">SESSION ANALYSIS</h3>
                 <div class="total-defects-box">
                     <div class="defects-number" id="totalDefects">0</div>
-                    <div class="defects-label">Total Defects</div>
+                    <div class="defects-label" data-i18n="defects.total">Total Defects</div>
                 </div>
                 <div class="metrics-grid">
                     <div class="metric-box">
-                        <div class="metric-label">Avg Confidence</div>
+                        <div class="metric-label" data-i18n="metrics.avg_conf">Avg Confidence</div>
                         <div class="metric-value" id="avgConfidence">0%</div>
                     </div>
                     <div class="metric-box">
-                        <div class="metric-label">Inference Time</div>
+                        <div class="metric-label" data-i18n="metrics.time">Inference Time</div>
                         <div class="metric-value" id="inferenceTime">0ms</div>
                     </div>
                 </div>
@@ -264,33 +279,33 @@
 
             <!-- Categorized Details -->
             <div class="sidebar-section">
-                <h3 class="sidebar-title">CATEGORIZED DETAILS</h3>
+                <h3 class="sidebar-title" data-i18n="sidebar.details">CATEGORIZED DETAILS</h3>
                 <div class="category-list">
                     <div class="category-item">
                         <div class="category-info">
-                            <span class="category-dot" style="background: #FF6B6B;"></span>
-                            <span class="category-name">D40 Potholes</span>
+                            <span class="category-dot" style="background: #FF6B6B; box-shadow: 0 0 10px rgba(255,107,107,0.5);"></span>
+                            <span class="category-name" data-i18n="cat.pothole">D40 Potholes</span>
                         </div>
                         <span class="category-count" id="countD40">00</span>
                     </div>
                     <div class="category-item">
                         <div class="category-info">
-                            <span class="category-dot" style="background: #4ECDC4;"></span>
-                            <span class="category-name">D00 Longitudinal Cracks</span>
+                            <span class="category-dot" style="background: #4ECDC4; box-shadow: 0 0 10px rgba(78,205,196,0.5);"></span>
+                            <span class="category-name" data-i18n="cat.long">D00 Longitudinal Cracks</span>
                         </div>
                         <span class="category-count" id="countD00">00</span>
                     </div>
                     <div class="category-item">
                         <div class="category-info">
-                            <span class="category-dot" style="background: #95E1D3;"></span>
-                            <span class="category-name">D10 Transverse Cracks</span>
+                            <span class="category-dot" style="background: #95E1D3; box-shadow: 0 0 10px rgba(149,225,211,0.5);"></span>
+                            <span class="category-name" data-i18n="cat.trans">D10 Transverse Cracks</span>
                         </div>
                         <span class="category-count" id="countD10">00</span>
                     </div>
                     <div class="category-item">
                         <div class="category-info">
-                            <span class="category-dot" style="background: #F38181;"></span>
-                            <span class="category-name">D20 Alligator Cracks</span>
+                            <span class="category-dot" style="background: #F38181; box-shadow: 0 0 10px rgba(243,129,129,0.5);"></span>
+                            <span class="category-name" data-i18n="cat.allig">D20 Alligator Cracks</span>
                         </div>
                         <span class="category-count" id="countD20">00</span>
                     </div>
@@ -301,33 +316,33 @@
             <div class="sidebar-section">
                 <button class="btn-export" id="btnDownloadResults" onclick="downloadImage()" disabled>
                     <i class="bi bi-download"></i>
-                    Download Results (PNG/JSON)
+                    <span data-i18n="btn.download">Download Results (PNG/JSON)</span>
                 </button>
                 <button class="btn-export" id="btnViewStats" onclick="viewStatistics()" disabled>
                     <i class="bi bi-bar-chart"></i>
-                    View Statistics
+                    <span data-i18n="btn.stats">View Statistics</span>
                 </button>
             </div>
 
             <!-- Detection Classes Legend -->
             <div class="sidebar-section">
-                <h3 class="sidebar-title">DETECTION CLASSES</h3>
+                <h3 class="sidebar-title" data-i18n="sidebar.blocks">DETECTION CLASSES</h3>
                 <div class="legend-list">
                     <div class="legend-item">
                         <span class="legend-color" style="background: #FF6B6B;"></span>
-                        <span class="legend-text">D40 - Pothole</span>
+                        <span class="legend-text" data-i18n="leg.pothole">D40 - Pothole</span>
                     </div>
                     <div class="legend-item">
                         <span class="legend-color" style="background: #4ECDC4;"></span>
-                        <span class="legend-text">D00 - Longitudinal Crack</span>
+                        <span class="legend-text" data-i18n="leg.long">D00 - Longitudinal Crack</span>
                     </div>
                     <div class="legend-item">
                         <span class="legend-color" style="background: #95E1D3;"></span>
-                        <span class="legend-text">D10 - Transverse Crack</span>
+                        <span class="legend-text" data-i18n="leg.trans">D10 - Transverse Crack</span>
                     </div>
                     <div class="legend-item">
                         <span class="legend-color" style="background: #F38181;"></span>
-                        <span class="legend-text">D20 - Alligator Crack</span>
+                        <span class="legend-text" data-i18n="leg.allig">D20 - Alligator Crack</span>
                     </div>
                 </div>
             </div>
@@ -338,9 +353,9 @@
 <!-- Statistics Modal -->
 <div class="modal fade" id="statsModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Detection Statistics</h5>
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold" data-i18n="modal.title">Detection Statistics</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -348,10 +363,10 @@
                     <!-- Stats content will be inserted here -->
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="downloadJSON()">
-                    <i class="bi bi-download"></i> Export JSON
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal" data-i18n="btn.close">Close</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4" onclick="downloadJSON()">
+                    <i class="bi bi-download"></i> <span data-i18n="btn.export">Export JSON</span>
                 </button>
             </div>
         </div>

@@ -11,6 +11,7 @@ async function initApp() {
     await loadConfig();
     await checkHealth();
     initSidebarStates();
+    initThemeState();
     setupEventListeners();
     setupFileUpload();
     setupSliders();
@@ -383,4 +384,28 @@ function initSidebarStates() {
   if (localStorage.getItem("rightSidebarCollapsed") === "true") {
     document.getElementById("sidebarRight").classList.add("collapsed");
   }
+}
+
+// Theme Management
+function initThemeState() {
+  const currentTheme = localStorage.getItem("appTheme") || "light";
+  if (currentTheme === "dark") {
+    document.documentElement.setAttribute("data-theme", "dark");
+    document.getElementById("themeIcon").className = "bi bi-sun";
+  }
+}
+
+function toggleTheme() {
+  const root = document.documentElement;
+  const newTheme = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  
+  if (newTheme === "dark") {
+    root.setAttribute("data-theme", "dark");
+    document.getElementById("themeIcon").className = "bi bi-sun";
+  } else {
+    root.removeAttribute("data-theme");
+    document.getElementById("themeIcon").className = "bi bi-moon-stars";
+  }
+  
+  localStorage.setItem("appTheme", newTheme);
 }
