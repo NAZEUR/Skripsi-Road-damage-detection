@@ -16,9 +16,14 @@ async function initApp() {
     setupFileUpload();
     setupSliders();
     setupDetectionMode();
+    startHealthPolling();
   } catch (error) {
     console.error("Init error:", error);
   }
+}
+let healthCheckInterval;
+function startHealthPolling() {
+  healthCheckInterval = setInterval(checkHealth, 5000);
 }
 async function loadConfig() {
   const response = await fetch("/config");
@@ -29,16 +34,61 @@ async function checkHealth() {
   try {
     const response = await fetch("/health");
     const data = await response.json();
-    const gpuStatus = document.getElementById("gpuStatus");
-    if (data.success && data.data.models.device === "cuda") {
-      gpuStatus.innerHTML = "GPU: <strong>Active</strong>";
-    } else {
-      gpuStatus.innerHTML = "GPU: <strong>CPU Mode</strong>";
+    const gpuStatusSpan = document.getElementById("gpuStatus").querySelector('strong');
+    const systemIcon = document.getElementById("appOnlineIcon");
+    const systemText = document.getElementById("appOnlineText");
+    const hwSelect = document.getElementById("hardwareSelect");
+
+    if (data.success) {
+      if (systemIcon) {
+          systemIcon.className = "bi bi-circle-fill text-success";
+          systemText.textContent = t("status.online");
+      }
+      
+      const activeDevice = data.data.models.device_active || data.data.models.device || "cpu";
+      if (activeDevice === "cuda") {
+        if(gpuStatusSpan) gpuStatusSpan.innerHTML = "GPU";
+        if(hwSelect && hwSelect.value !== "cuda") hwSelect.value = "cuda";
+      } else {
+        if(gpuStatusSpan) gpuStatusSpan.innerHTML = "CPU Mode";
+        if(hwSelect && hwSelect.value !== "cpu") hwSelect.value = "cpu";
+      }
     }
   } catch (error) {
-    document.getElementById("gpuStatus").innerHTML =
-      "GPU: <strong>Offline</strong>";
+    const gpuStatusSpan = document.getElementById("gpuStatus").querySelector('strong');
+    const systemIcon = document.getElementById("appOnlineIcon");
+    const systemText = document.getElementById("appOnlineText");
+    if(systemIcon) {
+        systemIcon.className = "bi bi-circle-fill text-danger";
+        systemText.textContent = "Offline";
+    }
+    if(gpuStatusSpan) gpuStatusSpan.innerHTML = "Offline";
   }
+}
+
+async function changeHardware() {
+    const hwSelect = document.getElementById("hardwareSelect");
+    const newDevice = hwSelect.value;
+    
+    try {
+        const response = await fetch("/system/device", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ device: newDevice })
+        });
+        const data = await response.json();
+        
+        if (!data.success) {
+            alert("Hardware switch failed: " + data.error);
+            checkHealth();
+        } else {
+            console.log("Hardware switched to", newDevice);
+            checkHealth();
+        }
+    } catch(err) {
+        alert("Failed to reach server");
+        checkHealth();
+    }
 }
 function setupEventListeners() {
   document

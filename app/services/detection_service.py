@@ -366,5 +366,18 @@ class DetectionService:
             'detector_loaded': self.detector.is_loaded(),
             'sahi_loaded': self.sahi_processor.is_loaded(),
             'model_info': self.detector.get_model_info(),
+            'device_active': self.detector.device if hasattr(self.detector, 'device') else Config.DEVICE,
             'ready': self.detector.is_loaded() and self.sahi_processor.is_loaded()
         }
+
+    def switch_device(self, device: str) -> Dict[str, Any]:
+        """Switch the inference device (cpu/cuda) for both models."""
+        try:
+            self.detector.switch_device(device)
+            self.sahi_processor.switch_device(device)
+            return {
+                'success': True,
+                'status': self.check_model_status()
+            }
+        except Exception as e:
+            raise RuntimeError(f"Failed to switch device: {str(e)}")

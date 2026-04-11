@@ -29,7 +29,7 @@
                 <i class="bi bi-moon-stars" id="themeIcon"></i>
             </button>
             <div class="user-divider"></div>
-            <span class="user-label" data-i18n="user.label">User: [Student Name]</span>
+            <span class="user-label" data-i18n="user.label">User: Nabila Nurhusna Yap</span>
             <div class="user-avatar">
                 <i class="bi bi-person-circle"></i>
             </div>
@@ -168,12 +168,18 @@
             <!-- System Status -->
             <div class="system-status">
                 <div class="status-item">
-                    <i class="bi bi-circle-fill text-success"></i>
-                    <span><span data-i18n="status.system">System Status: </span><strong data-i18n="status.online">Online</strong></span>
+                    <i class="bi bi-circle-fill text-success" id="appOnlineIcon"></i>
+                    <span><span data-i18n="status.system">System Status: </span><strong data-i18n="status.online" id="appOnlineText">Online</strong></span>
                 </div>
-                <div class="status-item">
-                    <i class="bi bi-gpu-card"></i>
-                    <span id="gpuStatus"><span data-i18n="status.gpu">GPU: </span><strong>Checking...</strong></span>
+                <div class="status-item d-flex justify-content-between align-items-center w-100">
+                    <div>
+                        <i class="bi bi-gpu-card"></i>
+                        <span id="gpuStatus"><span data-i18n="status.gpu">Hardware: </span><strong>Checking...</strong></span>
+                    </div>
+                    <select id="hardwareSelect" class="form-select form-select-sm" style="width: auto;" onchange="changeHardware()">
+                        <option value="cuda">GPU</option>
+                        <option value="cpu">CPU</option>
+                    </select>
                 </div>
             </div>
         </aside>
