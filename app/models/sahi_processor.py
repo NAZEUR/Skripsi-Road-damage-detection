@@ -172,17 +172,3 @@ class SAHIProcessor:
     def is_loaded(self) -> bool:
         """Check if SAHI model is loaded."""
         return self.detection_model is not None
-
-    def switch_device(self, device: str):
-        """Switch the device used by SAHI."""
-        import torch
-        if device not in ['cpu', 'cuda']:
-            raise ValueError("Device must be 'cpu' or 'cuda'")
-            
-        if device == 'cuda' and not torch.cuda.is_available():
-            raise RuntimeError("CUDA is not available on this system.")
-            
-        self.device = device
-        Config.DEVICE = device
-        if self.detection_model is not None:
-            self._load_model()

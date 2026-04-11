@@ -383,25 +383,6 @@ def cleanup():
         }), 500
 
 
-@main_bp.route('/system/device', methods=['POST'])
-def switch_device():
-    """Switch hardware inference device (CPU/GPU)."""
-    try:
-        data = request.get_json()
-        if not data or 'device' not in data:
-            return jsonify({'success': False, 'error': 'No device provided, must be cpu or cuda'}), 400
-            
-        device = data['device']
-        result = detection_service.switch_device(device)
-        return jsonify(result), 200
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f"Device switch failed: {str(e)}"
-        }), 500
-
-
 # Error handlers
 @main_bp.errorhandler(413)
 def request_entity_too_large(error):

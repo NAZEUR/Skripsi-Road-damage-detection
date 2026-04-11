@@ -150,17 +150,3 @@ class YOLODetector:
     def is_loaded(self) -> bool:
         """Check if model is loaded."""
         return self.model is not None
-
-    def switch_device(self, device: str):
-        """Switch the device currently used by YOLO."""
-        if device not in ['cpu', 'cuda']:
-            raise ValueError("Device must be 'cpu' or 'cuda'")
-        
-        if device == 'cuda' and not torch.cuda.is_available():
-            raise RuntimeError("CUDA is not available on this system.")
-            
-        self.device = device
-        Config.DEVICE = device
-        if self.model is not None:
-            self.model.to(self.device)
-            print(f"YOLO model moved to {self.device}")
