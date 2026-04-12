@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Session Analytics - Road Damage Detection{% endblock %}
+
+{% block content %}
+<div class="stats-container" style="height: 100vh; overflow-y: auto; background: var(--bg-main); transition: var(--transition);">
+    <header class="app-header shadow-sm position-sticky top-0 z-3">
+        <div class="header-left">
+            <div class="app-logo">
+                <i class="bi bi-bar-chart-fill"></i>
+            </div>
+            <h1 class="app-title">Session Statistics Dashboard</h1>
+        </div>
+        <div class="header-right">
+            <button class="btn btn-icon theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">
+                <i class="bi bi-moon-stars" id="themeIcon"></i>
+            </button>
+            <div class="user-divider"></div>
+            <button class="btn btn-outline-primary btn-sm rounded-pill px-4" onclick="window.close()">
+                <i class="bi bi-x-lg"></i> Close Dashboard
+            </button>
+        </div>
+    </header>
+
+    <div class="container-fluid py-5 px-md-5">
+        <div class="row g-4 mb-4" id="statsOverview">
+            <!-- Dynamic overview cards -->
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm rounded-4 h-100" style="background: var(--bg-white);">
+                    <div class="card-body p-4">
+                        <h4 class="card-title fw-bold mb-4" style="color: var(--text-primary); font-family: 'Outfit';">Categorized Detailing</h4>
+                        <div id="chartContainer" style="height: 350px;">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm rounded-4 h-100" style="background: var(--bg-white);">
+                    <div class="card-body p-4">
+                        <h4 class="card-title fw-bold mb-4" style="color: var(--text-primary); font-family: 'Outfit';">Distribution Ratio</h4>
+                        <div id="pieContainer" style="height: 350px; position: relative;">
+                            <canvas id="pieChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Load Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+// Theme Initialization
+function initThemeState() {
+  const currentTheme = localStorage.getItem("appTheme") || "light";
+  if (currentTheme === "dark") {
+    document.documentElement.setAttribute("data-theme", "dark");
+    document.getElementById("themeIcon").className = "bi bi-sun";
+  }
+}
+
+function toggleTheme() {
+  const root = document.documentElement;
+  const newTheme = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  if (newTheme === "dark") {
+    root.setAttribute("data-theme", "dark");
+    document.getElementById("themeIcon").className = "bi bi-sun";
+  } else {
+    root.removeAttribute("data-theme");
+    document.getElementById("themeIcon").className = "bi bi-moon-stars";
+  }
+  localStorage.setItem("appTheme", newTheme);
+  
+  // Re-render charts for dark mode text
+  renderCharts();
+}
+
+let sessionData = null;
+let barChartInstance = null;
+let pieChartInstance = null;
+
+// On Load
+document.addEventListener("DOMContentLoaded", () => {
+    initThemeState();
+    
+    // Parse stats
+    const rawStats = sessionStorage.getItem("appSessionStats");
+    if (!rawStats) {
+        document.querySelector('.container-fluid').innerHTML = `
+            <div class="alert alert-warning border-0 shadow-sm rounded-4 text-center p-5">
+                <i class="bi bi-exclamation-triangle display-1 text-warning mb-3"></i>
+                <h3 class="fw-bold">No Session Data Found</h3>
+                <p>Return to the main application and process images first!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    sessionData = JSON.parse(rawStats);
+    renderOverviewCards();
+    renderCharts();
+});
+
+function renderOverviewCards() {
+    const avgConf = sessionData.imagesProcessed > 0 ? ((sessionData.confidenceSum / sessionData.imagesProcessed) * 100).toFixed(1) : 0;
+    const avgTime = sessionData.imagesProcessed > 0 ? ((sessionData.timeSum / sessionData.imagesProcessed) * 1000).toFixed(0) : 0;
+    
+    const overviewHtml = `
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
+                <div class="card-body p-4">
+                    <h6 class="text-uppercase fw-bold text-white-50 mb-2">Images Processed</h6>
+                    <h2 class="display-5 fw-bold mb-0">${sessionData.imagesProcessed}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4" style="background: var(--bg-white);">
+                <div class="card-body p-4">
+                    <h6 class="text-uppercase fw-bold mb-2" style="color: var(--text-secondary);">Total Defects</h6>
+                    <h2 class="display-5 fw-bold mb-0" style="color: var(--text-primary);">${sessionData.totalDefects}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4" style="background: var(--bg-white);">
+                <div class="card-body p-4">
+                    <h6 class="text-uppercase fw-bold mb-2" style="color: var(--text-secondary);">Avg Confidence</h6>
+                    <h2 class="display-5 fw-bold mb-0" style="color: var(--success);">${avgConf}%</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4" style="background: var(--bg-white);">
+                <div class="card-body p-4">
+                    <h6 class="text-uppercase fw-bold mb-2" style="color: var(--text-secondary);">Inference Time Ratio</h6>
+                    <h2 class="display-5 fw-bold mb-0" style="color: var(--warning);">${avgTime}ms <span style="font-size: 1rem; color: var(--text-muted);">avg/img</span></h2>
+                </div>
+            </div>
+        </div>
+    `;
+    document.getElementById("statsOverview").innerHTML = overviewHtml;
+}
+
+function renderCharts() {
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    const textColor = isDark ? "#cbd5e1" : "#475569";
+    const gridColor = isDark ? "#334155" : "#e2e8f0";
+
+    const labels = ["D40 (Pothole)", "D00 (Longitudinal)", "D10 (Transverse)", "D20 (Alligator)"];
+    const datavals = [
+        sessionData.categories["D40 - Pothole"] || 0,
+        sessionData.categories["D00 - Longitudinal Crack"] || 0,
+        sessionData.categories["D10 - Transverse Crack"] || 0,
+        sessionData.categories["D20 - Alligator Crack"] || 0
+    ];
+    const colors = ["#ef4444", "#10b981", "#06b6d4", "#f43f5e"];
+
+    // Bar Chart
+    if(barChartInstance) barChartInstance.destroy();
+    const ctxBar = document.getElementById('categoryChart').getContext('2d');
+    barChartInstance = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Defects Detected',
+                data: datavals,
+                backgroundColor: colors,
+                borderWidth: 0,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: gridColor, drawBorder: false },
+                    ticks: { color: textColor, precision: 0 }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: textColor }
+                }
+            }
+        }
+    });
+
+    // Pie Chart
+    if(pieChartInstance) pieChartInstance.destroy();
+    const ctxPie = document.getElementById('pieChart').getContext('2d');
+    pieChartInstance = new Chart(ctxPie, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: datavals,
+                backgroundColor: colors,
+                borderWidth: 2,
+                borderColor: isDark ? '#1e293b' : '#ffffff',
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: textColor, padding: 20, usePointStyle: true }
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -54,8 +54,8 @@
                         <i class="bi bi-cloud-upload"></i>
                     </div>
                     <p class="upload-label" data-i18n="upload.label">Road Imagery</p>
-                    <p class="upload-hint" data-i18n="upload.hint">JPG/PNG, Max 10MB</p>
-                    <input type="file" id="fileInput" class="d-none" accept=".jpg,.jpeg,.png,.bmp">
+                    <p class="upload-hint" data-i18n="upload.hint">JPG/PNG/BMP or ZIP, Max 50MB</p>
+                    <input type="file" id="fileInput" class="d-none" accept=".jpg,.jpeg,.png,.bmp,.zip">
                 </div>
 
                 <!-- File Info (shown after upload) -->
@@ -303,11 +303,17 @@
 
             <!-- Export Section -->
             <div class="sidebar-section">
-                <button class="btn-export" id="btnDownloadResults" onclick="downloadImage()" disabled>
-                    <i class="bi bi-download"></i>
-                    <span data-i18n="btn.download">Download Results (PNG/JSON)</span>
-                </button>
-                <button class="btn-export" id="btnViewStats" onclick="viewStatistics()" disabled>
+                <div class="d-grid gap-2 mb-3">
+                    <button class="btn-export" id="btnDownloadImage" onclick="downloadImage()" disabled>
+                        <i class="bi bi-file-image"></i>
+                        <span data-i18n="btn.download_img">Download Image (.png)</span>
+                    </button>
+                    <button class="btn-export" id="btnDownloadJSON" onclick="downloadJSON()" disabled>
+                        <i class="bi bi-file-code"></i>
+                        <span data-i18n="btn.download_json">Download Data (.json)</span>
+                    </button>
+                </div>
+                <button class="btn-export w-100" id="btnViewStats" onclick="viewStatistics()" disabled>
                     <i class="bi bi-bar-chart"></i>
                     <span data-i18n="btn.stats">View Statistics</span>
                 </button>
