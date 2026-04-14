@@ -76,15 +76,42 @@ class FileHandler:
             filepath = self.upload_folder / unique_filename
             file.save(str(filepath))
             
-            # Get file info
             file_size = get_file_size_mb(filepath)
+            
+            if original_filename.lower().endswith('.zip'):
+                import zipfile
+                extracted_dir = self.upload_folder / f"{unique_filename}_extracted"
+                ensure_dir_exists(extracted_dir)
+                
+                image_files = []
+                with zipfile.ZipFile(filepath, 'r') as zip_ref:
+                    zip_ref.extractall(extracted_dir)
+                    for extracted_file in extracted_dir.rglob('*'):
+                        if extracted_file.is_file():
+                            ext = extracted_file.name.lower().split('.')[-1]
+                            if ext in ['jpg', 'jpeg', 'png', 'bmp']:
+                                image_files.append({
+                                    'filepath': str(extracted_file),
+                                    'filename': extracted_file.name
+                                })
+                
+                return {
+                    'filepath': str(filepath),
+                    'filename': original_filename,
+                    'is_zip': True,
+                    'extracted_files': image_files,
+                    'size': round(file_size, 2)
+                }
+            
+            # Normal single image processing
             width, height = get_image_resolution(filepath)
             
             return {
                 'filepath': str(filepath),
                 'filename': original_filename,
                 'size': round(file_size, 2),
-                'resolution': f"{width}x{height}"
+                'resolution': f"{width}x{height}",
+                'is_zip': False
             }
             
         except Exception as e:

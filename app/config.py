@@ -20,8 +20,8 @@ class Config:
     DEVICE = 'cuda'  # Use 'cpu' if no GPU available
     
     # File upload settings
-    MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10MB max file size
-    ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'bmp'}
+    MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB max file size
+    ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'bmp', 'zip'}
     
     # Detection parameters - defaults
     DEFAULT_CONF_THRESHOLD = 0.25

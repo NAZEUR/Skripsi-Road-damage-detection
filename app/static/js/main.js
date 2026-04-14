@@ -9,8 +9,8 @@ document.addEventListener("DOMContentLoaded", initApp);
 async function initApp() {
   try {
     await loadConfig();
-    await checkHealth();
     initSidebarStates();
+    initThemeState();
     setupEventListeners();
     setupFileUpload();
     setupSliders();
@@ -24,21 +24,8 @@ async function loadConfig() {
   const data = await response.json();
   if (data.success) appConfig = data.data;
 }
-async function checkHealth() {
-  try {
-    const response = await fetch("/health");
-    const data = await response.json();
-    const gpuStatus = document.getElementById("gpuStatus");
-    if (data.success && data.data.models.device === "cuda") {
-      gpuStatus.innerHTML = "GPU: <strong>Active</strong>";
-    } else {
-      gpuStatus.innerHTML = "GPU: <strong>CPU Mode</strong>";
-    }
-  } catch (error) {
-    document.getElementById("gpuStatus").innerHTML =
-      "GPU: <strong>Offline</strong>";
-  }
-}
+
+
 function setupEventListeners() {
   document
     .getElementById("fileInput")
@@ -110,10 +97,23 @@ async function handleFileSelect(event) {
     const response = await fetch("/upload", { method: "POST", body: formData });
     const data = await response.json();
     if (data.success) {
-      uploadedFilePath = data.data.filepath;
-      uploadedFileName = data.data.filename;
-      showImagePreview(file, data.data);
-      document.getElementById("runAnalysisBtn").disabled = false;
+      if (data.data.is_zip) {
+         imageQueue = data.data.extracted_files;
+         document.getElementById("fileName").textContent = data.data.filename + ` (${imageQueue.length} files)`;
+         document.getElementById("fileSize").textContent = data.data.size + " MB";
+         document.getElementById("fileResolution").textContent = "ZIP Archive";
+         document.getElementById("fileInfo").classList.remove("d-none");
+         document.getElementById("runAnalysisBtn").disabled = false;
+         
+         document.getElementById("emptyState").style.display = "none";
+         document.getElementById("originalImage").classList.add("d-none");
+      } else {
+         uploadedFilePath = data.data.filepath;
+         uploadedFileName = data.data.filename;
+         showImagePreview(file, data.data);
+         document.getElementById("runAnalysisBtn").disabled = false;
+         imageQueue = [{'filepath': uploadedFilePath, 'filename': uploadedFileName}];
+      }
     } else {
       alert("Upload failed: " + data.error);
     }
@@ -123,14 +123,14 @@ async function handleFileSelect(event) {
   }
 }
 function validateFile(file) {
-  const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/bmp"];
-  if (!allowedTypes.includes(file.type)) {
-    alert("Invalid file type. Please upload JPG, PNG, or BMP");
+  const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/bmp", "application/zip", "application/x-zip-compressed", "multipart/x-zip"];
+  if (!allowedTypes.includes(file.type) && !file.name.toLowerCase().endsWith('.zip')) {
+    alert("Invalid file type. Please upload JPG, PNG, BMP, or ZIP");
     return false;
   }
-  const maxSize = 10 * 1024 * 1024;
+  const maxSize = 50 * 1024 * 1024;
   if (file.size > maxSize) {
-    alert("File too large. Maximum 10MB");
+    alert("File too large. Maximum 50MB");
     return false;
   }
   return true;
@@ -154,6 +154,7 @@ function clearUpload() {
   uploadedFileName = null;
   outputImagePath = null;
   outputJSONPath = null;
+  imageQueue = [];
   document.getElementById("fileInput").value = "";
   document.getElementById("originalImage").classList.add("d-none");
   document.getElementById("resultImage").classList.add("d-none");
@@ -161,58 +162,71 @@ function clearUpload() {
   document.getElementById("resultEmptyState").style.display = "block";
   document.getElementById("fileInfo").classList.add("d-none");
   document.getElementById("runAnalysisBtn").disabled = true;
-  resetStatistics();
   disableExportButtons();
 }
 async function runDetection() {
-  if (!uploadedFilePath) {
-    alert("Please upload an image first");
+  if (!imageQueue || imageQueue.length === 0) {
+    alert("Please upload an image or zip first");
     return;
   }
+  if (isProcessingQueue) return;
+  isProcessingQueue = true;
+  document.getElementById("runAnalysisBtn").disabled = true;
+
   try {
-    const mode = document.querySelector(
-      'input[name="detectionMode"]:checked',
-    ).value;
-    const confidence =
-      parseFloat(document.getElementById("confidenceSlider").value) / 100;
-    const params = {
-      filepath: uploadedFilePath,
-      mode: mode,
-      confidence: confidence,
-    };
+    const mode = document.querySelector('input[name="detectionMode"]:checked').value;
+    const confidence = parseFloat(document.getElementById("confidenceSlider").value) / 100;
+    const paramsTemplate = { mode: mode, confidence: confidence };
     if (mode === "sahi") {
-      params.slice_height = parseInt(
-        document.getElementById("sliceSizeSlider").value,
-      );
-      params.slice_width = parseInt(
-        document.getElementById("sliceSizeSlider").value,
-      );
-      params.overlap_ratio = parseFloat(
-        document.getElementById("overlapSlider").value,
-      );
-      params.match_threshold = parseFloat(
-        document.getElementById("matchSlider").value,
-      );
+      paramsTemplate.slice_height = parseInt(document.getElementById("sliceSizeSlider").value);
+      paramsTemplate.slice_width = parseInt(document.getElementById("sliceSizeSlider").value);
+      paramsTemplate.overlap_ratio = parseFloat(document.getElementById("overlapSlider").value);
+      paramsTemplate.match_threshold = parseFloat(document.getElementById("matchSlider").value);
     }
     showLoading();
-    const response = await fetch("/detect", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(params),
-    });
-    const data = await response.json();
-    if (data.success) {
-      outputImagePath = data.data.output.image;
-      outputJSONPath = data.data.output.json;
-      displayResults(data.data);
-    } else {
-      throw new Error(data.error);
+    
+    // Process queue sequentially
+    for (let i = 0; i < imageQueue.length; i++) {
+        const item = imageQueue[i];
+        const loadingText = document.querySelector('.loading-text');
+        
+        let originalText = loadingText.getAttribute('data-original');
+        if (!originalText) {
+             originalText = loadingText.textContent;
+             loadingText.setAttribute('data-original', originalText);
+        }
+        loadingText.textContent = `Processing (${i+1}/${imageQueue.length})...`;
+      
+        const params = { ...paramsTemplate, filepath: item.filepath };
+        const response = await fetch("/detect", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(params),
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            historyPNGs.push(data.data.output.image);
+            historyJSONs.push(data.data.output.json);
+            outputImagePath = data.data.output.image;
+            outputJSONPath = data.data.output.json;
+        
+            await new Promise((resolve) => {
+                displayResults(data.data, resolve);
+            });
+        }
     }
   } catch (error) {
     console.error("Detection error:", error);
     alert("Detection failed: " + error.message);
   } finally {
     hideLoading();
+    const loadingText = document.querySelector('.loading-text');
+    if (loadingText.getAttribute('data-original')) {
+        loadingText.textContent = loadingText.getAttribute('data-original');
+    }
+    isProcessingQueue = false;
+    document.getElementById("runAnalysisBtn").disabled = false;
   }
 }
 function showLoading() {
@@ -221,7 +235,7 @@ function showLoading() {
 function hideLoading() {
   document.getElementById("loadingOverlay").classList.add("d-none");
 }
-function displayResults(data) {
+function displayResults(data, callback = null) {
   const resultImg = document.getElementById("resultImage");
   const resultContainer = document.getElementById("resultImageContainer");
 
@@ -242,6 +256,7 @@ function displayResults(data) {
     // Update statistics
     updateStatistics(data);
     enableExportButtons();
+    if (callback) callback();
   };
 
   preloadImg.onerror = function () {
@@ -250,6 +265,7 @@ function displayResults(data) {
     alert(
       "Failed to load result image. The detection may have failed. Please try again.",
     );
+    if (callback) callback();
   };
 
   // Start preloading the image
@@ -257,34 +273,30 @@ function displayResults(data) {
   preloadImg.src = outputImagePath;
 }
 function updateStatistics(data) {
-  document.getElementById("totalDefects").textContent =
-    data.statistics.total_detections;
-  const avgConf = (data.statistics.average_confidence * 100).toFixed(1);
-  document.getElementById("avgConfidence").textContent = avgConf + "%";
-  const time = (data.statistics.inference_time * 1000).toFixed(0);
-  document.getElementById("inferenceTime").textContent = time + "ms";
+  appSessionStats.imagesProcessed += 1;
+  appSessionStats.totalDefects += data.statistics.total_detections;
+  
+  appSessionStats.confidenceSum += data.statistics.average_confidence;
+  appSessionStats.timeSum += data.statistics.inference_time;
+  
   const detections = data.statistics.detections_by_class;
-  document.getElementById("countD40").textContent = String(
-    detections["D40 - Pothole"] || 0,
-  ).padStart(2, "0");
-  document.getElementById("countD00").textContent = String(
-    detections["D00 - Longitudinal Crack"] || 0,
-  ).padStart(2, "0");
-  document.getElementById("countD10").textContent = String(
-    detections["D10 - Transverse Crack"] || 0,
-  ).padStart(2, "0");
-  document.getElementById("countD20").textContent = String(
-    detections["D20 - Alligator Crack"] || 0,
-  ).padStart(2, "0");
-}
-function resetStatistics() {
-  document.getElementById("totalDefects").textContent = "0";
-  document.getElementById("avgConfidence").textContent = "0%";
-  document.getElementById("inferenceTime").textContent = "0ms";
-  document.getElementById("countD40").textContent = "00";
-  document.getElementById("countD00").textContent = "00";
-  document.getElementById("countD10").textContent = "00";
-  document.getElementById("countD20").textContent = "00";
+  appSessionStats.categories['D40 - Pothole'] += (detections["D40 - Pothole"] || 0);
+  appSessionStats.categories['D00 - Longitudinal Crack'] += (detections["D00 - Longitudinal Crack"] || 0);
+  appSessionStats.categories['D10 - Transverse Crack'] += (detections["D10 - Transverse Crack"] || 0);
+  appSessionStats.categories['D20 - Alligator Crack'] += (detections["D20 - Alligator Crack"] || 0);
+
+  document.getElementById("totalDefects").textContent = appSessionStats.totalDefects;
+  
+  const avgConf = ((appSessionStats.confidenceSum / appSessionStats.imagesProcessed) * 100).toFixed(1);
+  document.getElementById("avgConfidence").textContent = avgConf + "%";
+  
+  const time = ((appSessionStats.timeSum / appSessionStats.imagesProcessed) * 1000).toFixed(0);
+  document.getElementById("inferenceTime").textContent = time + "ms";
+  
+  document.getElementById("countD40").textContent = String(appSessionStats.categories['D40 - Pothole']).padStart(2, "0");
+  document.getElementById("countD00").textContent = String(appSessionStats.categories['D00 - Longitudinal Crack']).padStart(2, "0");
+  document.getElementById("countD10").textContent = String(appSessionStats.categories['D10 - Transverse Crack']).padStart(2, "0");
+  document.getElementById("countD20").textContent = String(appSessionStats.categories['D20 - Alligator Crack']).padStart(2, "0");
 }
 function enableExportButtons() {
   document.getElementById("btnDownloadResults").disabled = false;
@@ -295,40 +307,68 @@ function disableExportButtons() {
   document.getElementById("btnViewStats").disabled = true;
 }
 function downloadImage() {
-  if (!outputImagePath) {
+  if (historyPNGs.length === 0) {
     alert("No result image available");
     return;
   }
-  const link = document.createElement("a");
-  // outputImagePath is now a full URL like /view/filename
-  // We need to extract the filename and download it
-  const filename = outputImagePath.split("/").pop().split("?")[0];
-  link.href = "/download/" + filename;
-  link.download = "detection_result.png";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  if (historyPNGs.length === 1) {
+      const link = document.createElement("a");
+      const filename = historyPNGs[0].split("/").pop().split("?")[0];
+      link.href = "/download/" + filename;
+      link.download = "detection_result.png";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  } else {
+      handleZipDownload(historyPNGs, "images_results.zip");
+  }
 }
+
 function downloadJSON() {
-  if (!outputJSONPath) {
+  if (historyJSONs.length === 0) {
     alert("No JSON data available");
     return;
   }
-  const link = document.createElement("a");
-  // outputJSONPath is already a full URL like /download/filename
-  link.href = outputJSONPath;
-  link.download = "detection_data.json";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  if (historyJSONs.length === 1) {
+      const link = document.createElement("a");
+      link.href = historyJSONs[0];
+      link.download = "detection_data.json";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  } else {
+      handleZipDownload(historyJSONs, "data_results.zip");
+  }
 }
+
+function handleZipDownload(fileUrls, outFilename) {
+    const filenames = fileUrls.map(url => url.split("/").pop().split("?")[0]);
+    fetch("/zip_results", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ files: filenames })
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = outFilename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    })
+    .catch(console.error);
+}
+
 function viewStatistics() {
-  if (!outputJSONPath) {
-    alert("No statistics available");
+  if (appSessionStats.imagesProcessed === 0) {
+    alert("No statistics available yet");
     return;
   }
-  const modal = new bootstrap.Modal(document.getElementById("statsModal"));
-  modal.show();
+  sessionStorage.setItem("appSessionStats", JSON.stringify(appSessionStats));
+  window.open("/statistics", "_blank");
 }
 function zoomIn() {
   zoomLevel = Math.min(zoomLevel + 0.2, 3);
@@ -360,6 +400,7 @@ function toggleLeftSidebar() {
   const sidebar = document.getElementById("sidebarLeft");
   const mainLayout = document.querySelector(".main-layout");
   sidebar.classList.toggle("collapsed");
+  mainLayout.classList.toggle("left-collapsed");
   if (sidebar.classList.contains("collapsed")) {
     localStorage.setItem("leftSidebarCollapsed", "true");
   } else {
@@ -370,6 +411,7 @@ function toggleRightSidebar() {
   const sidebar = document.getElementById("sidebarRight");
   const mainLayout = document.querySelector(".main-layout");
   sidebar.classList.toggle("collapsed");
+  mainLayout.classList.toggle("right-collapsed");
   if (sidebar.classList.contains("collapsed")) {
     localStorage.setItem("rightSidebarCollapsed", "true");
   } else {
@@ -377,10 +419,37 @@ function toggleRightSidebar() {
   }
 }
 function initSidebarStates() {
+  const mainLayout = document.querySelector(".main-layout");
   if (localStorage.getItem("leftSidebarCollapsed") === "true") {
     document.getElementById("sidebarLeft").classList.add("collapsed");
+    if(mainLayout) mainLayout.classList.add("left-collapsed");
   }
   if (localStorage.getItem("rightSidebarCollapsed") === "true") {
     document.getElementById("sidebarRight").classList.add("collapsed");
+    if(mainLayout) mainLayout.classList.add("right-collapsed");
   }
+}
+
+// Theme Management
+function initThemeState() {
+  const currentTheme = localStorage.getItem("appTheme") || "light";
+  if (currentTheme === "dark") {
+    document.documentElement.setAttribute("data-theme", "dark");
+    document.getElementById("themeIcon").className = "bi bi-sun";
+  }
+}
+
+function toggleTheme() {
+  const root = document.documentElement;
+  const newTheme = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  
+  if (newTheme === "dark") {
+    root.setAttribute("data-theme", "dark");
+    document.getElementById("themeIcon").className = "bi bi-sun";
+  } else {
+    root.removeAttribute("data-theme");
+    document.getElementById("themeIcon").className = "bi bi-moon-stars";
+  }
+  
+  localStorage.setItem("appTheme", newTheme);
 }

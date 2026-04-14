@@ -383,6 +383,44 @@ def cleanup():
         }), 500
 
 
+
+@main_bp.route('/zip_results', methods=['POST'])
+def zip_results():
+    try:
+        data = request.json
+        if not data or 'files' not in data:
+            return jsonify({'success': False, 'error': 'No files specified'}), 400
+            
+        filenames = data['files']
+        if not filenames:
+            return jsonify({'success': False, 'error': 'Empty files list'}), 400
+            
+        import io
+        import zipfile
+        memory_file = io.BytesIO()
+        
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for filename in filenames:
+                file_path = Config.OUTPUT_FOLDER / filename
+                if file_path.exists():
+                    zf.write(str(file_path), filename)
+                    
+        memory_file.seek(0)
+        return send_file(
+            memory_file,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name='results_archive.zip'
+        )
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+from flask import render_template
+
+@main_bp.route('/statistics', methods=['GET'])
+def statistics():
+    return render_template('statistics.html')
+
 # Error handlers
 @main_bp.errorhandler(413)
 def request_entity_too_large(error):
