@@ -5,9 +5,14 @@ API endpoints for the road damage detection application.
 from flask import Blueprint, request, jsonify, send_file
 from pathlib import Path
 import os
+import logging
 from app.config import Config
 from app.services import DetectionService, FileHandler
 from app.utils import ParameterValidator
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Create blueprint
 main_bp = Blueprint('main', __name__)
@@ -108,10 +113,13 @@ def detect():
         JSON response with detection results
     """
     try:
+        logger.info("Detection request received")
+        
         # Get request data
         data = request.get_json()
         
         if not data:
+            logger.warning("No data provided in detection request")
             return jsonify({
                 'success': False,
                 'error': 'No data provided'
@@ -119,12 +127,14 @@ def detect():
         
         # Validate required fields
         if 'filepath' not in data:
+            logger.warning("filepath not provided in detection request")
             return jsonify({
                 'success': False,
                 'error': 'filepath is required'
             }), 400
         
         if 'mode' not in data:
+            logger.warning("mode not provided in detection request")
             return jsonify({
                 'success': False,
                 'error': 'mode is required (baseline or sahi)'
@@ -134,6 +144,8 @@ def detect():
         filepath = data['filepath']
         mode = data['mode']
         confidence = data.get('confidence', Config.DEFAULT_CONF_THRESHOLD)
+        
+        logger.info(f"Detection started for {filepath} using mode: {mode} with confidence: {confidence}")
         
         # Prepare detection parameters
         detect_params = {
@@ -156,17 +168,20 @@ def detect():
         })
         
         if not is_valid:
+            logger.warning(f"Parameter validation failed: {error}")
             return jsonify({
                 'success': False,
                 'error': error
             }), 400
         
         # Perform detection
+        logger.info("Starting detection processing...")
         result = detection_service.process_detection(
             image_path=filepath,
             mode=mode,
             **detect_params
         )
+        logger.info(f"Detection completed. Found {result['detections']['count']} detections")
         
         # Convert absolute paths to relative URLs for frontend
         output_image_path = result['output']['image']
@@ -207,6 +222,7 @@ def detect():
         
     except ValueError as e:
         # Validation error
+        logger.error(f"ValueError in detection: {str(e)}", exc_info=True)
         return jsonify({
             'success': False,
             'error': str(e)
@@ -214,6 +230,9 @@ def detect():
         
     except Exception as e:
         # Server error
+        logger.error(f"Exception in detection: {str(e)}", exc_info=True)
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': f"Detection failed: {str(e)}"
