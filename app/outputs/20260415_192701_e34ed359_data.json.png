@@ -1,0 +1,42 @@
+{
+  "image_info": {
+    "width": 1121,
+    "height": 1133,
+    "channels": 3,
+    "dtype": "uint8",
+    "shape": [
+      1133,
+      1121,
+      3
+    ]
+  },
+  "statistics": {
+    "total_detections": 1,
+    "detections_by_class": {
+      "D40 - Pothole": 1
+    },
+    "average_confidence": 0.658,
+    "inference_time": 12.247,
+    "inference_time_formatted": "12.25s",
+    "num_slices": 25
+  },
+  "detections": {
+    "boxes": [
+      [
+        667.9110260009766,
+        973.16552734375,
+        777.0421600341797,
+        1033.2828674316406
+      ]
+    ],
+    "scores": [
+      0.6581255793571472
+    ],
+    "classes": [
+      3
+    ],
+    "class_names": [
+      "D40 - Pothole"
+    ]
+  }
+}

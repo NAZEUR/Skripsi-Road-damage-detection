@@ -4,7 +4,24 @@ let uploadedFilePath = null,
   outputImagePath = null,
   outputJSONPath = null,
   appConfig = null,
-  zoomLevel = 1;
+  zoomLevel = 1,
+  imageQueue = [],
+  historyPNGs = [],
+  historyJSONs = [],
+  isProcessingQueue = false,
+  appSessionStats = {
+    imagesProcessed: 0,
+    totalDefects: 0,
+    confidenceSum: 0,
+    timeSum: 0,
+    categories: {
+      "D40 - Pothole": 0,
+      "D00 - Longitudinal Crack": 0,
+      "D10 - Transverse Crack": 0,
+      "D20 - Alligator Crack": 0,
+    },
+  };
+
 document.addEventListener("DOMContentLoaded", initApp);
 async function initApp() {
   try {
@@ -24,7 +41,6 @@ async function loadConfig() {
   const data = await response.json();
   if (data.success) appConfig = data.data;
 }
-
 
 function setupEventListeners() {
   document
@@ -98,21 +114,25 @@ async function handleFileSelect(event) {
     const data = await response.json();
     if (data.success) {
       if (data.data.is_zip) {
-         imageQueue = data.data.extracted_files;
-         document.getElementById("fileName").textContent = data.data.filename + ` (${imageQueue.length} files)`;
-         document.getElementById("fileSize").textContent = data.data.size + " MB";
-         document.getElementById("fileResolution").textContent = "ZIP Archive";
-         document.getElementById("fileInfo").classList.remove("d-none");
-         document.getElementById("runAnalysisBtn").disabled = false;
-         
-         document.getElementById("emptyState").style.display = "none";
-         document.getElementById("originalImage").classList.add("d-none");
+        imageQueue = data.data.extracted_files;
+        document.getElementById("fileName").textContent =
+          data.data.filename + ` (${imageQueue.length} files)`;
+        document.getElementById("fileSize").textContent =
+          data.data.size + " MB";
+        document.getElementById("fileResolution").textContent = "ZIP Archive";
+        document.getElementById("fileInfo").classList.remove("d-none");
+        document.getElementById("runAnalysisBtn").disabled = false;
+
+        document.getElementById("emptyState").style.display = "none";
+        document.getElementById("originalImage").classList.add("d-none");
       } else {
-         uploadedFilePath = data.data.filepath;
-         uploadedFileName = data.data.filename;
-         showImagePreview(file, data.data);
-         document.getElementById("runAnalysisBtn").disabled = false;
-         imageQueue = [{'filepath': uploadedFilePath, 'filename': uploadedFileName}];
+        uploadedFilePath = data.data.filepath;
+        uploadedFileName = data.data.filename;
+        showImagePreview(file, data.data);
+        document.getElementById("runAnalysisBtn").disabled = false;
+        imageQueue = [
+          { filepath: uploadedFilePath, filename: uploadedFileName },
+        ];
       }
     } else {
       alert("Upload failed: " + data.error);
@@ -123,8 +143,19 @@ async function handleFileSelect(event) {
   }
 }
 function validateFile(file) {
-  const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/bmp", "application/zip", "application/x-zip-compressed", "multipart/x-zip"];
-  if (!allowedTypes.includes(file.type) && !file.name.toLowerCase().endsWith('.zip')) {
+  const allowedTypes = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/bmp",
+    "application/zip",
+    "application/x-zip-compressed",
+    "multipart/x-zip",
+  ];
+  if (
+    !allowedTypes.includes(file.type) &&
+    !file.name.toLowerCase().endsWith(".zip")
+  ) {
     alert("Invalid file type. Please upload JPG, PNG, BMP, or ZIP");
     return false;
   }
@@ -174,56 +205,88 @@ async function runDetection() {
   document.getElementById("runAnalysisBtn").disabled = true;
 
   try {
-    const mode = document.querySelector('input[name="detectionMode"]:checked').value;
-    const confidence = parseFloat(document.getElementById("confidenceSlider").value) / 100;
+    const mode = document.querySelector(
+      'input[name="detectionMode"]:checked',
+    ).value;
+    const confidence =
+      parseFloat(document.getElementById("confidenceSlider").value) / 100;
     const paramsTemplate = { mode: mode, confidence: confidence };
     if (mode === "sahi") {
-      paramsTemplate.slice_height = parseInt(document.getElementById("sliceSizeSlider").value);
-      paramsTemplate.slice_width = parseInt(document.getElementById("sliceSizeSlider").value);
-      paramsTemplate.overlap_ratio = parseFloat(document.getElementById("overlapSlider").value);
-      paramsTemplate.match_threshold = parseFloat(document.getElementById("matchSlider").value);
+      paramsTemplate.slice_height = parseInt(
+        document.getElementById("sliceSizeSlider").value,
+      );
+      paramsTemplate.slice_width = parseInt(
+        document.getElementById("sliceSizeSlider").value,
+      );
+      paramsTemplate.overlap_ratio = parseFloat(
+        document.getElementById("overlapSlider").value,
+      );
+      paramsTemplate.match_threshold = parseFloat(
+        document.getElementById("matchSlider").value,
+      );
     }
     showLoading();
-    
+
     // Process queue sequentially
     for (let i = 0; i < imageQueue.length; i++) {
-        const item = imageQueue[i];
-        const loadingText = document.querySelector('.loading-text');
-        
-        let originalText = loadingText.getAttribute('data-original');
-        if (!originalText) {
-             originalText = loadingText.textContent;
-             loadingText.setAttribute('data-original', originalText);
-        }
-        loadingText.textContent = `Processing (${i+1}/${imageQueue.length})...`;
-      
-        const params = { ...paramsTemplate, filepath: item.filepath };
+      const item = imageQueue[i];
+      const loadingText = document.querySelector(".loading-text");
+
+      let originalText = loadingText.getAttribute("data-original");
+      if (!originalText) {
+        originalText = loadingText.textContent;
+        loadingText.setAttribute("data-original", originalText);
+      }
+      loadingText.textContent = `Processing (${i + 1}/${imageQueue.length})...`;
+
+      const params = { ...paramsTemplate, filepath: item.filepath };
+
+      try {
+        console.log("Sending detection request:", params);
         const response = await fetch("/detect", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(params),
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(params),
         });
-        const data = await response.json();
-        
-        if (data.success) {
-            historyPNGs.push(data.data.output.image);
-            historyJSONs.push(data.data.output.json);
-            outputImagePath = data.data.output.image;
-            outputJSONPath = data.data.output.json;
-        
-            await new Promise((resolve) => {
-                displayResults(data.data, resolve);
-            });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
+
+        const data = await response.json();
+        console.log("Detection response:", data);
+
+        if (!data.success) {
+          throw new Error(data.error || "Detection failed with unknown error");
+        }
+
+        if (data.data && data.data.output) {
+          historyPNGs.push(data.data.output.image);
+          historyJSONs.push(data.data.output.json);
+          outputImagePath = data.data.output.image;
+          outputJSONPath = data.data.output.json;
+
+          await new Promise((resolve) => {
+            displayResults(data.data, resolve);
+          });
+        } else {
+          throw new Error("Invalid response format: missing output data");
+        }
+      } catch (itemError) {
+        console.error(`Error processing image ${i + 1}:`, itemError);
+        throw new Error(
+          `Failed to process image ${i + 1}: ${itemError.message}`,
+        );
+      }
     }
   } catch (error) {
     console.error("Detection error:", error);
     alert("Detection failed: " + error.message);
   } finally {
     hideLoading();
-    const loadingText = document.querySelector('.loading-text');
-    if (loadingText.getAttribute('data-original')) {
-        loadingText.textContent = loadingText.getAttribute('data-original');
+    const loadingText = document.querySelector(".loading-text");
+    if (loadingText.getAttribute("data-original")) {
+      loadingText.textContent = loadingText.getAttribute("data-original");
     }
     isProcessingQueue = false;
     document.getElementById("runAnalysisBtn").disabled = false;
@@ -275,35 +338,56 @@ function displayResults(data, callback = null) {
 function updateStatistics(data) {
   appSessionStats.imagesProcessed += 1;
   appSessionStats.totalDefects += data.statistics.total_detections;
-  
+
   appSessionStats.confidenceSum += data.statistics.average_confidence;
   appSessionStats.timeSum += data.statistics.inference_time;
-  
-  const detections = data.statistics.detections_by_class;
-  appSessionStats.categories['D40 - Pothole'] += (detections["D40 - Pothole"] || 0);
-  appSessionStats.categories['D00 - Longitudinal Crack'] += (detections["D00 - Longitudinal Crack"] || 0);
-  appSessionStats.categories['D10 - Transverse Crack'] += (detections["D10 - Transverse Crack"] || 0);
-  appSessionStats.categories['D20 - Alligator Crack'] += (detections["D20 - Alligator Crack"] || 0);
 
-  document.getElementById("totalDefects").textContent = appSessionStats.totalDefects;
-  
-  const avgConf = ((appSessionStats.confidenceSum / appSessionStats.imagesProcessed) * 100).toFixed(1);
+  const detections = data.statistics.detections_by_class;
+  appSessionStats.categories["D40 - Pothole"] +=
+    detections["D40 - Pothole"] || 0;
+  appSessionStats.categories["D00 - Longitudinal Crack"] +=
+    detections["D00 - Longitudinal Crack"] || 0;
+  appSessionStats.categories["D10 - Transverse Crack"] +=
+    detections["D10 - Transverse Crack"] || 0;
+  appSessionStats.categories["D20 - Alligator Crack"] +=
+    detections["D20 - Alligator Crack"] || 0;
+
+  document.getElementById("totalDefects").textContent =
+    appSessionStats.totalDefects;
+
+  const avgConf = (
+    (appSessionStats.confidenceSum / appSessionStats.imagesProcessed) *
+    100
+  ).toFixed(1);
   document.getElementById("avgConfidence").textContent = avgConf + "%";
-  
-  const time = ((appSessionStats.timeSum / appSessionStats.imagesProcessed) * 1000).toFixed(0);
+
+  const time = (
+    (appSessionStats.timeSum / appSessionStats.imagesProcessed) *
+    1000
+  ).toFixed(0);
   document.getElementById("inferenceTime").textContent = time + "ms";
-  
-  document.getElementById("countD40").textContent = String(appSessionStats.categories['D40 - Pothole']).padStart(2, "0");
-  document.getElementById("countD00").textContent = String(appSessionStats.categories['D00 - Longitudinal Crack']).padStart(2, "0");
-  document.getElementById("countD10").textContent = String(appSessionStats.categories['D10 - Transverse Crack']).padStart(2, "0");
-  document.getElementById("countD20").textContent = String(appSessionStats.categories['D20 - Alligator Crack']).padStart(2, "0");
+
+  document.getElementById("countD40").textContent = String(
+    appSessionStats.categories["D40 - Pothole"],
+  ).padStart(2, "0");
+  document.getElementById("countD00").textContent = String(
+    appSessionStats.categories["D00 - Longitudinal Crack"],
+  ).padStart(2, "0");
+  document.getElementById("countD10").textContent = String(
+    appSessionStats.categories["D10 - Transverse Crack"],
+  ).padStart(2, "0");
+  document.getElementById("countD20").textContent = String(
+    appSessionStats.categories["D20 - Alligator Crack"],
+  ).padStart(2, "0");
 }
 function enableExportButtons() {
-  document.getElementById("btnDownloadResults").disabled = false;
+  document.getElementById("btnDownloadImage").disabled = false;
+  document.getElementById("btnDownloadJSON").disabled = false;
   document.getElementById("btnViewStats").disabled = false;
 }
 function disableExportButtons() {
-  document.getElementById("btnDownloadResults").disabled = true;
+  document.getElementById("btnDownloadImage").disabled = true;
+  document.getElementById("btnDownloadJSON").disabled = true;
   document.getElementById("btnViewStats").disabled = true;
 }
 function downloadImage() {
@@ -312,15 +396,15 @@ function downloadImage() {
     return;
   }
   if (historyPNGs.length === 1) {
-      const link = document.createElement("a");
-      const filename = historyPNGs[0].split("/").pop().split("?")[0];
-      link.href = "/download/" + filename;
-      link.download = "detection_result.png";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    const link = document.createElement("a");
+    const filename = historyPNGs[0].split("/").pop().split("?")[0];
+    link.href = "/download/" + filename;
+    link.download = "detection_result.png";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   } else {
-      handleZipDownload(historyPNGs, "images_results.zip");
+    handleZipDownload(historyPNGs, "images_results.zip");
   }
 }
 
@@ -330,34 +414,34 @@ function downloadJSON() {
     return;
   }
   if (historyJSONs.length === 1) {
-      const link = document.createElement("a");
-      link.href = historyJSONs[0];
-      link.download = "detection_data.json";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    const link = document.createElement("a");
+    link.href = historyJSONs[0];
+    link.download = "detection_data.json";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   } else {
-      handleZipDownload(historyJSONs, "data_results.zip");
+    handleZipDownload(historyJSONs, "data_results.zip");
   }
 }
 
 function handleZipDownload(fileUrls, outFilename) {
-    const filenames = fileUrls.map(url => url.split("/").pop().split("?")[0]);
-    fetch("/zip_results", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ files: filenames })
-    })
-    .then(response => response.blob())
-    .then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = outFilename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+  const filenames = fileUrls.map((url) => url.split("/").pop().split("?")[0]);
+  fetch("/zip_results", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ files: filenames }),
+  })
+    .then((response) => response.blob())
+    .then((blob) => {
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = outFilename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     })
     .catch(console.error);
 }
@@ -422,11 +506,11 @@ function initSidebarStates() {
   const mainLayout = document.querySelector(".main-layout");
   if (localStorage.getItem("leftSidebarCollapsed") === "true") {
     document.getElementById("sidebarLeft").classList.add("collapsed");
-    if(mainLayout) mainLayout.classList.add("left-collapsed");
+    if (mainLayout) mainLayout.classList.add("left-collapsed");
   }
   if (localStorage.getItem("rightSidebarCollapsed") === "true") {
     document.getElementById("sidebarRight").classList.add("collapsed");
-    if(mainLayout) mainLayout.classList.add("right-collapsed");
+    if (mainLayout) mainLayout.classList.add("right-collapsed");
   }
 }
 
@@ -441,8 +525,9 @@ function initThemeState() {
 
 function toggleTheme() {
   const root = document.documentElement;
-  const newTheme = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
-  
+  const newTheme =
+    root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+
   if (newTheme === "dark") {
     root.setAttribute("data-theme", "dark");
     document.getElementById("themeIcon").className = "bi bi-sun";
@@ -450,6 +535,6 @@ function toggleTheme() {
     root.removeAttribute("data-theme");
     document.getElementById("themeIcon").className = "bi bi-moon-stars";
   }
-  
+
   localStorage.setItem("appTheme", newTheme);
 }
