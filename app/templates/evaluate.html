@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Evaluate Test Data - Road Damage Detection{% endblock %}
+
+{% block content %}
+<div class="app-container" id="appContainer">
+    <header class="app-header">
+        <div class="header-left">
+            <div class="app-logo">
+                <i class="bi bi-shield-fill-check"></i>
+            </div>
+            <h1 class="app-title" data-i18n="eval.title">Evaluate Test Data</h1>
+        </div>
+        <div class="header-right">
+            <!-- Language Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle btn-sm rounded-pill px-3" type="button" id="languageDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-translate"></i> <span id="currentLangLabel">EN</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" aria-labelledby="languageDropdown">
+                    <li><a class="dropdown-item" href="#" onclick="setLanguage('en'); return false;">English</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="setLanguage('id'); return false;">Bahasa Indonesia</a></li>
+                </ul>
+            </div>
+            <button class="btn btn-icon theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">
+                <i class="bi bi-moon-stars" id="themeIcon"></i>
+            </button>
+            <div class="user-divider"></div>
+            <a href="/" class="btn btn-outline-primary btn-sm rounded-pill px-4">
+                <i class="bi bi-house"></i> <span data-i18n="btn.back_main">Back to Main</span>
+            </a>
+        </div>
+    </header>
+
+    <div class="main-layout right-collapsed" id="mainLayout">
+        <!-- Left Sidebar - Configuration -->
+        <aside class="sidebar-left" id="sidebarLeft">
+            <div class="sidebar-header">
+                <button class="btn-minimize" onclick="toggleLeftSidebar()" id="btnToggleLeft" title="Minimize sidebar">
+                    <i class="bi bi-chevron-left" id="iconToggleLeft"></i>
+                </button>
+            </div>
+
+            <!-- SAHI Specific Parameters (Always visible) -->
+            <div class="sidebar-section" id="sahiParams">
+                <h3 class="sidebar-title" data-i18n="sidebar.confidence">CONFIDENCE THRESHOLD</h3>
+                <div class="slider-value-display">
+                    <span id="confidenceValue">25</span>%
+                </div>
+                <input type="range" class="slider" id="confidenceSlider" min="0" max="100" value="25">
+
+                <h3 class="sidebar-title mt-4" data-i18n="sidebar.slice">SLICE SIZE</h3>
+                <div class="slider-value-display">
+                    <span id="sliceSizeValue">640</span>px
+                </div>
+                <input type="range" class="slider" id="sliceSizeSlider" min="320" max="1024" step="32" value="640">
+
+                <h3 class="sidebar-title mt-4" data-i18n="sidebar.overlap">OVERLAP RATIO</h3>
+                <div class="slider-value-display">
+                    <span id="overlapValue">0.20</span>
+                </div>
+                <input type="range" class="slider" id="overlapSlider" min="0.1" max="0.5" step="0.05" value="0.2">
+
+                <h3 class="sidebar-title mt-4" data-i18n="sidebar.match">MATCH THRESHOLD (IoU)</h3>
+                <div class="slider-value-display">
+                    <span id="matchValue">0.50</span>
+                </div>
+                <input type="range" class="slider" id="matchSlider" min="0.3" max="0.7" step="0.05" value="0.5">
+            </div>
+        </aside>
+
+        <!-- Floating re-open button (visible only when sidebar is collapsed) -->
+        <button class="btn-restore-edge btn-restore-left" onclick="toggleLeftSidebar()" title="Show configuration">
+            <i class="bi bi-chevron-right"></i>
+        </button>
+
+        <!-- Main Content -->
+        <main class="main-content" id="mainContent" style="overflow-y: auto;">
+            <!-- Loading State -->
+            <div class="loading-overlay d-none" id="evalLoading">
+                <div class="spinner"></div>
+                <div class="loading-text mt-3 fw-bold" id="loadingText" data-i18n="loading.eval">Processing evaluation...</div>
+            </div>
+
+            <!-- Initial Gallery View -->
+            <div id="galleryView" class="p-4">
+                <div class="d-flex flex-column mb-4">
+                    <h4 style="color: var(--text-primary);" data-i18n="eval.select_image">Select a Test Image for Evaluation</h4>
+                    
+                    <!-- Country Filter -->
+                    <div class="mt-3">
+                        <div class="dropdown">
+                            <button class="btn btn-outline-primary dropdown-toggle rounded-pill px-4" type="button" id="countryDropdown" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
+                                <i class="bi bi-funnel-fill me-1"></i> <span data-i18n="eval.filter">Filter by Country</span>
+                            </button>
+                            <ul class="dropdown-menu shadow-sm border-0 p-3" aria-labelledby="countryDropdown" style="min-width: 200px;">
+                                <li class="mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input country-filter" type="checkbox" value="China" id="chkChina" checked onchange="filterImages()">
+                                        <label class="form-check-label" for="chkChina">China</label>
+                                    </div>
+                                </li>
+                                <li class="mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input country-filter" type="checkbox" value="Czech" id="chkCzech" checked onchange="filterImages()">
+                                        <label class="form-check-label" for="chkCzech">Czech</label>
+                                    </div>
+                                </li>
+                                <li class="mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input country-filter" type="checkbox" value="India" id="chkIndia" checked onchange="filterImages()">
+                                        <label class="form-check-label" for="chkIndia">India</label>
+                                    </div>
+                                </li>
+                                <li class="mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input country-filter" type="checkbox" value="Japan" id="chkJapan" checked onchange="filterImages()">
+                                        <label class="form-check-label" for="chkJapan">Japan</label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input country-filter" type="checkbox" value="United_States" id="chkUS" checked onchange="filterImages()">
+                                        <label class="form-check-label" for="chkUS">United States</label>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3" id="imageGrid">
+                    <!-- Images will be injected here -->
+                </div>
+            </div>
+
+            <!-- Evaluation Results View (Hidden Initially) -->
+            <div id="evalResultsView" class="d-none p-4 w-100">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 style="color: var(--text-primary);" id="evalTitle">Evaluation Results</h4>
+                    <button class="btn btn-outline-secondary rounded-pill px-4" onclick="showGallery()">
+                        <i class="bi bi-arrow-left"></i> <span data-i18n="eval.back_gallery">Back to Gallery</span>
+                    </button>
+                </div>
+
+                <!-- 2x2 Grid for Images -->
+                <div class="row g-4 mb-5">
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: var(--bg-white);">
+                            <div class="card-header border-0 bg-transparent pt-3 pb-0">
+                                <h6 class="fw-bold mb-0 text-secondary" data-i18n="eval.original">Original Image</h6>
+                            </div>
+                            <div class="card-body text-center">
+                                <img id="imgOriginal" src="" class="img-fluid rounded w-100" style="object-fit: contain; max-height: 400px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: var(--bg-white);">
+                            <div class="card-header border-0 bg-transparent pt-3 pb-0">
+                                <h6 class="fw-bold mb-0 text-secondary" data-i18n="eval.gt">True Labels (Ground Truth)</h6>
+                            </div>
+                            <div class="card-body text-center">
+                                <img id="imgGT" src="" class="img-fluid rounded w-100" style="object-fit: contain; max-height: 400px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: var(--bg-white);">
+                            <div class="card-header border-0 bg-transparent pt-3 pb-0">
+                                <h6 class="fw-bold mb-0 text-secondary" data-i18n="eval.baseline">Prediction: YOLOv11 (Baseline)</h6>
+                            </div>
+                            <div class="card-body text-center">
+                                <img id="imgBaseline" src="" class="img-fluid rounded w-100" style="object-fit: contain; max-height: 400px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: var(--bg-white);">
+                            <div class="card-header border-0 bg-transparent pt-3 pb-0">
+                                <h6 class="fw-bold mb-0 text-secondary" data-i18n="eval.sahi">Prediction: SAHI</h6>
+                            </div>
+                            <div class="card-body text-center">
+                                <img id="imgSahi" src="" class="img-fluid rounded w-100" style="object-fit: contain; max-height: 400px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Metrics Table -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4" style="background: var(--bg-white);">
+                    <div class="card-header border-0 bg-transparent pt-4 pb-2 px-4">
+                        <h5 class="fw-bold mb-0" style="color: var(--text-primary);" data-i18n="eval.metrics">Evaluation Metrics</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="table-responsive">
+                            <table class="table table-borderless text-center align-middle" style="color: var(--text-secondary);">
+                                <thead style="border-bottom: 2px solid var(--border-color);">
+                                    <tr>
+                                        <th class="text-start" data-i18n="eval.model">Model</th>
+                                        <th>Precision</th>
+                                        <th>Recall</th>
+                                        <th>F1-Score</th>
+                                        <th>mAP@50</th>
+                                        <th>mAP@50-95</th>
+                                        <th>Eval Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="metricsTableBody">
+                                    <!-- Injected by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <aside class="sidebar-right collapsed" id="sidebarRight" style="display:none;"></aside>
+    </div>
+</div>
+
+<script src="/static/js/i18n.js"></script>
+<script src="/static/js/evaluate.js"></script>
+<script>
+    // Sliders setup
+    document.getElementById("confidenceSlider").addEventListener("input", (e) => { document.getElementById("confidenceValue").textContent = e.target.value; });
+    document.getElementById("sliceSizeSlider").addEventListener("input", (e) => { document.getElementById("sliceSizeValue").textContent = e.target.value; });
+    document.getElementById("overlapSlider").addEventListener("input", (e) => { document.getElementById("overlapValue").textContent = parseFloat(e.target.value).toFixed(2); });
+    document.getElementById("matchSlider").addEventListener("input", (e) => { document.getElementById("matchValue").textContent = parseFloat(e.target.value).toFixed(2); });
+    
+    function toggleTheme() {
+        const root = document.documentElement;
+        const newTheme = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        if (newTheme === "dark") {
+            root.setAttribute("data-theme", "dark");
+            document.getElementById("themeIcon").className = "bi bi-sun";
+        } else {
+            root.removeAttribute("data-theme");
+            document.getElementById("themeIcon").className = "bi bi-moon-stars";
+        }
+        localStorage.setItem("appTheme", newTheme);
+    }
+    
+    document.addEventListener("DOMContentLoaded", () => {
+        const currentTheme = localStorage.getItem("appTheme") || "light";
+        if (currentTheme === "dark") {
+            document.documentElement.setAttribute("data-theme", "dark");
+            document.getElementById("themeIcon").className = "bi bi-sun";
+        }
+    });
+</script>
+{% endblock %}

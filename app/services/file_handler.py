@@ -141,7 +141,13 @@ class FileHandler:
                 filepath, self.output_folder
             )
             if not is_valid:
-                raise ValueError(error)
+                # Also check testdata folder
+                testdata_dir = Config.BASE_DIR.parent / 'testdata' / 'images'
+                is_valid, error = PathValidator.validate_path(
+                    filepath, testdata_dir
+                )
+                if not is_valid:
+                    raise ValueError(error)
         
         try:
             image = cv2.imread(filepath)

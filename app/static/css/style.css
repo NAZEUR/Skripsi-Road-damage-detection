@@ -191,11 +191,66 @@ h1, h2, h3, h4, h5, h6, .brand-text {
 .sidebar-left,
 .sidebar-right {
   background: var(--bg-white);
+  position: relative;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 1.5rem;
   border-right: 1px solid var(--border-light);
   transition: var(--transition);
+}
+
+.sidebar-left.collapsed,
+.sidebar-right.collapsed {
+  overflow: hidden;
+  padding: 0;
+}
+
+/* Used by evaluate page only — wraps content inside sidebar */
+.sidebar-content {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1.5rem;
+}
+
+/* Sidebar toggle arrow button — sticks to the outer edge of the sidebar */
+.sidebar-toggle {
+  position: absolute;
+  top: 1.25rem;
+  z-index: 110;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-white);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+
+.sidebar-toggle:hover {
+  color: var(--primary-blue);
+  border-color: var(--primary-blue);
+  box-shadow: var(--shadow-glow);
+}
+
+/* Left sidebar toggle: peeks out the right edge */
+.sidebar-toggle.left {
+  right: -14px;
+}
+
+/* Right sidebar toggle: peeks out the left edge */
+.sidebar-toggle.right {
+  left: -14px;
+}
+
+/* When left sidebar is collapsed, the toggle floats at left of content area */
+.main-layout.left-collapsed .sidebar-toggle.left {
+  right: -14px;
 }
 
 .sidebar-right {
