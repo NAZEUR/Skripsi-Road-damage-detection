@@ -133,6 +133,94 @@ class DetectionVisualizer:
             
         except Exception as e:
             raise RuntimeError(f"Visualization failed: {str(e)}")
+
+    def draw_merged_detections(
+        self,
+        image: np.ndarray,
+        ground_truths: List[Dict[str, Any]],
+        predictions: Dict[str, Any]
+    ) -> np.ndarray:
+        """
+        Draw both ground truth and predicted bounding boxes on the same image.
+        Ground truth boxes are drawn with a distinct color and style to differentiate.
+        """
+        output_image = image.copy()
+        
+        # 1. Draw Ground Truths (Green boxes)
+        gt_color = (0, 255, 0) # Green for GT
+        img_h, img_w = image.shape[:2]
+        
+        for gt in ground_truths:
+            cls_id = gt['class']
+            nx, ny, nw, nh = gt['bbox']
+            
+            # Un-normalize
+            x_center = int(nx * img_w)
+            y_center = int(ny * img_h)
+            box_w = int(nw * img_w)
+            box_h = int(nh * img_h)
+            
+            x1 = int(x_center - box_w / 2)
+            y1 = int(y_center - box_h / 2)
+            x2 = int(x_center + box_w / 2)
+            y2 = int(y_center + box_h / 2)
+            
+            class_name = self.class_names.get(cls_id, f"Class {cls_id}")
+            
+            # Draw GT box (slightly thicker, solid)
+            cv2.rectangle(output_image, (x1, y1), (x2, y2), gt_color, self.box_thickness + 1)
+            
+            label = f"{class_name} [GT]"
+            (text_width, text_height), baseline = cv2.getTextSize(label, self.font, self.font_scale, self.font_thickness)
+            label_y = max(y1 - 10, text_height + self.text_padding)
+            cv2.rectangle(output_image, (x1, label_y - text_height - self.text_padding), (x1 + text_width + self.text_padding * 2, label_y + baseline), gt_color, -1)
+            cv2.putText(output_image, label, (x1 + self.text_padding, label_y - baseline), self.font, self.font_scale, (0, 0, 0), self.font_thickness, cv2.LINE_AA)
+
+        # 2. Draw Predictions (Using class colors, slightly thinner or standard)
+        boxes = predictions.get('boxes', [])
+        scores = predictions.get('scores', [])
+        classes = predictions.get('classes', [])
+        
+        for box, score, cls in zip(boxes, scores, classes):
+            x1, y1, x2, y2 = map(int, box)
+            # Use red if the class color is green to avoid confusion, or just use the config color
+            color = self.class_colors.get(cls, (0, 0, 255)) 
+            if color == (0, 255, 0): # If class color is exactly green, use red instead for prediction to contrast GT
+                color = (0, 0, 255)
+                
+            class_name = self.class_names.get(cls, f"Class {cls}")
+            
+            # Draw Pred box (dashed effect could be done but standard rect is simpler, maybe thinner)
+            cv2.rectangle(output_image, (x1, y1), (x2, y2), color, max(1, self.box_thickness - 1))
+            
+            label = f"{class_name} [Pred]: {score:.2f}"
+            (text_width, text_height), baseline = cv2.getTextSize(label, self.font, self.font_scale * 0.8, self.font_thickness - 1)
+            # Put label at the bottom of the box to avoid overlapping GT label at the top
+            label_y = min(y2 + text_height + self.text_padding, img_h - 10)
+            cv2.rectangle(output_image, (x1, label_y - text_height - self.text_padding), (x1 + text_width + self.text_padding * 2, label_y + baseline), color, -1)
+            cv2.putText(output_image, label, (x1 + self.text_padding, label_y - baseline), self.font, self.font_scale * 0.8, (255, 255, 255), self.font_thickness - 1, cv2.LINE_AA)
+
+        return output_image
+        
+    def save_merged_visualization(
+        self,
+        image: np.ndarray,
+        ground_truths: List[Dict[str, Any]],
+        predictions: Dict[str, Any],
+        output_path: Path
+    ) -> str:
+        """
+        Draw merged detections and save result image.
+        """
+        try:
+            output_image = self.draw_merged_detections(image, ground_truths, predictions)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            success = cv2.imwrite(str(output_path), output_image)
+            if not success:
+                raise RuntimeError("Failed to save merged image")
+            return str(output_path)
+        except Exception as e:
+            raise RuntimeError(f"Merged visualization failed: {str(e)}")
     
     def create_side_by_side(
         self,

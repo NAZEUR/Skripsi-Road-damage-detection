@@ -244,3 +244,141 @@ class EvaluationService:
             "mAP@50": f"{map50:.3f}",
             "mAP@50-95": f"{map50_95:.3f}"
         }
+
+    def calculate_batch_metrics(self, ground_truths_list: List[List[Dict]], predictions_list: List[Dict], img_dims_list: List[Tuple[int, int]]) -> Dict[str, Any]:
+        """
+        Calculates Precision, Recall, F1, mAP@50, mAP@50-95 for a batch of images.
+        """
+        if not ground_truths_list and not any(p.get('boxes') for p in predictions_list):
+             return {
+                 "Precision": 1.0, "Recall": 1.0, "F1-Score": 1.0, 
+                 "mAP@50": 1.0, "mAP@50-95": 1.0
+             }
+        
+        gts_by_class = {}
+        preds_by_class = {}
+        
+        total_gt = 0
+        img_idx_offset = 0 # To track which image a prediction belongs to
+        
+        for img_idx, (ground_truths, predictions, (img_w, img_h)) in enumerate(zip(ground_truths_list, predictions_list, img_dims_list)):
+            # Format GTs
+            for gt in ground_truths:
+                cls_id = gt['class']
+                nx, ny, nw, nh = gt['bbox']
+                x1 = (nx - nw/2) * img_w
+                y1 = (ny - nh/2) * img_h
+                x2 = (nx + nw/2) * img_w
+                y2 = (ny + nh/2) * img_h
+                if cls_id not in gts_by_class:
+                    gts_by_class[cls_id] = []
+                gts_by_class[cls_id].append({'box': [x1, y1, x2, y2], 'img_idx': img_idx})
+                total_gt += 1
+                
+            # Format Predictions
+            boxes = predictions.get('boxes', [])
+            scores = predictions.get('scores', [])
+            classes = predictions.get('classes', [])
+            
+            for i in range(len(boxes)):
+                cls_id = classes[i]
+                if cls_id not in preds_by_class:
+                    preds_by_class[cls_id] = []
+                preds_by_class[cls_id].append({
+                    'box': boxes[i],
+                    'score': scores[i],
+                    'img_idx': img_idx
+                })
+                
+        all_classes = set(gts_by_class.keys()).union(set(preds_by_class.keys()))
+        
+        total_tp = 0
+        total_fp = 0
+        
+        aps_50 = []
+        aps_50_95 = []
+        
+        iou_thresholds = np.linspace(0.5, 0.95, 10)
+        
+        for cls_id in all_classes:
+            gts = gts_by_class.get(cls_id, [])
+            preds = preds_by_class.get(cls_id, [])
+            
+            # Sort preds by score descending globally
+            preds.sort(key=lambda x: x['score'], reverse=True)
+            
+            tps_thresholds = np.zeros((len(preds), len(iou_thresholds)))
+            fps_thresholds = np.zeros((len(preds), len(iou_thresholds)))
+            
+            matched_gts_per_thresh = {th: set() for th in iou_thresholds} # Store matched gt by (th, img_idx, gt_idx)
+            
+            # Organize GTs by image index for faster lookup
+            gts_by_img = {}
+            for g_idx, g in enumerate(gts):
+                img_idx = g['img_idx']
+                if img_idx not in gts_by_img:
+                    gts_by_img[img_idx] = []
+                gts_by_img[img_idx].append((g_idx, g['box']))
+            
+            for p_idx, p in enumerate(preds):
+                img_idx = p['img_idx']
+                p_box = p['box']
+                img_gts = gts_by_img.get(img_idx, [])
+                
+                best_iou = 0
+                best_gt_idx = -1
+                for global_g_idx, g_box in img_gts:
+                    iou = self._calculate_iou(p_box, g_box)
+                    if iou > best_iou:
+                        best_iou = iou
+                        best_gt_idx = global_g_idx
+                
+                # Check against all thresholds
+                for t_idx, th in enumerate(iou_thresholds):
+                    if best_iou >= th and best_gt_idx not in matched_gts_per_thresh[th]:
+                        tps_thresholds[p_idx, t_idx] = 1
+                        matched_gts_per_thresh[th].add(best_gt_idx)
+                    else:
+                        fps_thresholds[p_idx, t_idx] = 1
+            
+            # AP calculation per threshold
+            ap_thresholds = []
+            for t_idx, th in enumerate(iou_thresholds):
+                tps_cum = np.cumsum(tps_thresholds[:, t_idx])
+                fps_cum = np.cumsum(fps_thresholds[:, t_idx])
+                
+                recalls = tps_cum / len(gts) if len(gts) > 0 else np.zeros_like(tps_cum)
+                precisions = tps_cum / (tps_cum + fps_cum)
+                
+                if len(gts) == 0:
+                    ap_thresholds.append(0.0)
+                    continue
+                
+                ap = 0.0
+                for r in np.arange(0.0, 1.1, 0.1):
+                    mask = recalls >= r
+                    if np.any(mask):
+                        ap += np.max(precisions[mask]) / 11.0
+                ap_thresholds.append(ap)
+            
+            if len(gts) > 0 or len(preds) > 0:
+                aps_50.append(ap_thresholds[0])
+                aps_50_95.append(np.mean(ap_thresholds))
+            
+            total_tp += np.sum(tps_thresholds[:, 0])
+            total_fp += np.sum(fps_thresholds[:, 0])
+            
+        precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0.0
+        recall = total_tp / total_gt if total_gt > 0 else 0.0
+        f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+        
+        map50 = np.mean(aps_50) if aps_50 else 0.0
+        map50_95 = np.mean(aps_50_95) if aps_50_95 else 0.0
+        
+        return {
+            "Precision": f"{precision:.3f}",
+            "Recall": f"{recall:.3f}",
+            "F1-Score": f"{f1:.3f}",
+            "mAP@50": f"{map50:.3f}",
+            "mAP@50-95": f"{map50_95:.3f}"
+        }

@@ -87,8 +87,8 @@
                 <div class="d-flex flex-column mb-4">
                     <h4 style="color: var(--text-primary);" data-i18n="eval.select_image">Select a Test Image for Evaluation</h4>
                     
-                    <!-- Country Filter -->
-                    <div class="mt-3">
+                    <!-- Action Bar -->
+                    <div class="d-flex flex-wrap gap-3 mt-3 align-items-center">
                         <div class="dropdown">
                             <button class="btn btn-outline-primary dropdown-toggle rounded-pill px-4" type="button" id="countryDropdown" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
                                 <i class="bi bi-funnel-fill me-1"></i> <span data-i18n="eval.filter">Filter by Country</span>
@@ -126,6 +126,15 @@
                                 </li>
                             </ul>
                         </div>
+                        
+                        <div class="form-check ms-2">
+                            <input class="form-check-input" type="checkbox" id="selectAllImages" onchange="toggleSelectAll()">
+                            <label class="form-check-label fw-bold" for="selectAllImages">Select All</label>
+                        </div>
+                        
+                        <button class="btn btn-primary rounded-pill px-4 ms-auto" id="btnEvaluateBatch" onclick="evaluateSelected()" disabled>
+                            <i class="bi bi-play-fill me-1"></i> Evaluate Selected (<span id="selectedCount">0</span>)
+                        </button>
                     </div>
                 </div>
 
@@ -143,48 +152,9 @@
                     </button>
                 </div>
 
-                <!-- 2x2 Grid for Images -->
-                <div class="row g-4 mb-5">
-                    <div class="col-md-6">
-                        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: var(--bg-white);">
-                            <div class="card-header border-0 bg-transparent pt-3 pb-0">
-                                <h6 class="fw-bold mb-0 text-secondary" data-i18n="eval.original">Original Image</h6>
-                            </div>
-                            <div class="card-body text-center">
-                                <img id="imgOriginal" src="" class="img-fluid rounded w-100" style="object-fit: contain; max-height: 400px;">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: var(--bg-white);">
-                            <div class="card-header border-0 bg-transparent pt-3 pb-0">
-                                <h6 class="fw-bold mb-0 text-secondary" data-i18n="eval.gt">True Labels (Ground Truth)</h6>
-                            </div>
-                            <div class="card-body text-center">
-                                <img id="imgGT" src="" class="img-fluid rounded w-100" style="object-fit: contain; max-height: 400px;">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: var(--bg-white);">
-                            <div class="card-header border-0 bg-transparent pt-3 pb-0">
-                                <h6 class="fw-bold mb-0 text-secondary" data-i18n="eval.baseline">Prediction: YOLOv11 (Baseline)</h6>
-                            </div>
-                            <div class="card-body text-center">
-                                <img id="imgBaseline" src="" class="img-fluid rounded w-100" style="object-fit: contain; max-height: 400px;">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: var(--bg-white);">
-                            <div class="card-header border-0 bg-transparent pt-3 pb-0">
-                                <h6 class="fw-bold mb-0 text-secondary" data-i18n="eval.sahi">Prediction: SAHI</h6>
-                            </div>
-                            <div class="card-body text-center">
-                                <img id="imgSahi" src="" class="img-fluid rounded w-100" style="object-fit: contain; max-height: 400px;">
-                            </div>
-                        </div>
-                    </div>
+                <!-- Batch Results Container -->
+                <div id="batchResultsContainer" class="row g-4 mb-5">
+                    <!-- Dynamic merged images will be injected here -->
                 </div>
 
                 <!-- Metrics Table -->

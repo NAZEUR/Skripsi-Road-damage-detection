@@ -527,6 +527,103 @@ def api_evaluate_single():
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@main_bp.route('/api/evaluate_batch', methods=['POST'])
+def api_evaluate_batch():
+    try:
+        data = request.json
+        filenames = data.get('filenames')
+        if not filenames or not isinstance(filenames, list):
+            return jsonify({'success': False, 'error': 'No filenames provided or invalid format'}), 400
+            
+        conf_threshold = data.get('confidence', Config.DEFAULT_CONF_THRESHOLD)
+        slice_height = data.get('slice_height', Config.DEFAULT_SLICE_HEIGHT)
+        slice_width = data.get('slice_width', Config.DEFAULT_SLICE_WIDTH)
+        overlap_ratio = data.get('overlap_ratio', Config.DEFAULT_OVERLAP_RATIO)
+        match_threshold = data.get('match_threshold', Config.DEFAULT_MATCH_THRESHOLD)
+        
+        images_dir = Config.BASE_DIR.parent / 'testdata' / 'images'
+        
+        import time
+        import cv2
+        
+        baseline_gts_list = []
+        baseline_preds_list = []
+        baseline_dims_list = []
+        
+        sahi_gts_list = []
+        sahi_preds_list = []
+        sahi_dims_list = []
+        
+        results = []
+        
+        total_baseline_time = 0
+        total_sahi_time = 0
+        
+        for filename in filenames:
+            img_path = images_dir / filename
+            if not img_path.exists():
+                continue
+                
+            img = cv2.imread(str(img_path))
+            img_h, img_w = img.shape[:2]
+            
+            gts = eval_service.load_ground_truth(filename)
+            
+            # Baseline
+            start_t = time.time()
+            baseline_res = detection_service.detect_baseline(str(img_path), conf_threshold)
+            baseline_time = time.time() - start_t
+            total_baseline_time += baseline_time
+            
+            baseline_filename = f"baseline_merged_{filename}"
+            detection_service.visualizer.save_merged_visualization(img, gts, baseline_res, Config.OUTPUT_FOLDER / baseline_filename)
+            
+            baseline_gts_list.append(gts)
+            baseline_preds_list.append(baseline_res)
+            baseline_dims_list.append((img_w, img_h))
+            
+            # SAHI
+            start_t = time.time()
+            sahi_res = detection_service.detect_sahi(
+                str(img_path), 
+                slice_height=slice_height, slice_width=slice_width, 
+                overlap_ratio=overlap_ratio, match_threshold=match_threshold, conf_threshold=conf_threshold
+            )
+            sahi_time = time.time() - start_t
+            total_sahi_time += sahi_time
+            
+            sahi_filename = f"sahi_merged_{filename}"
+            detection_service.visualizer.save_merged_visualization(img, gts, sahi_res, Config.OUTPUT_FOLDER / sahi_filename)
+            
+            sahi_gts_list.append(gts)
+            sahi_preds_list.append(sahi_res)
+            sahi_dims_list.append((img_w, img_h))
+            
+            results.append({
+                'filename': filename,
+                'baseline_image': f"/view/{baseline_filename}",
+                'sahi_image': f"/view/{sahi_filename}"
+            })
+            
+        baseline_metrics = eval_service.calculate_batch_metrics(baseline_gts_list, baseline_preds_list, baseline_dims_list)
+        baseline_metrics['Eval Time'] = f"{total_baseline_time*1000:.0f} ms"
+        
+        sahi_metrics = eval_service.calculate_batch_metrics(sahi_gts_list, sahi_preds_list, sahi_dims_list)
+        sahi_metrics['Eval Time'] = f"{total_sahi_time*1000:.0f} ms"
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'images': results,
+                'baseline_metrics': baseline_metrics,
+                'sahi_metrics': sahi_metrics
+            }
+        }), 200
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @main_bp.route('/api/raw_test_image/<filename>', methods=['GET'])
 def api_raw_test_image(filename):
     try:
