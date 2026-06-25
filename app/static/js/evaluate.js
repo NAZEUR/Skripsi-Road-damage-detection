@@ -148,17 +148,10 @@ async function evaluateSelected() {
     
     try {
         const conf = parseFloat(document.getElementById("confidenceSlider").value) / 100;
-        const slice_size = parseInt(document.getElementById("sliceSizeSlider").value);
-        const overlap = parseFloat(document.getElementById("overlapSlider").value);
-        const match = parseFloat(document.getElementById("matchSlider").value);
         
         const payload = {
             filenames: Array.from(selectedImages),
-            confidence: conf,
-            slice_height: slice_size,
-            slice_width: slice_size,
-            overlap_ratio: overlap,
-            match_threshold: match
+            confidence: conf
         };
         
         const response = await fetch('/api/evaluate_batch', {
@@ -203,13 +196,21 @@ function renderBatchResults(data) {
                 </div>
                 <div class="card-body p-4">
                     <div class="row g-4">
-                        <div class="col-md-6 text-center">
-                            <h6 class="fw-bold mb-3 text-secondary">GT vs YOLOv11 (Baseline)</h6>
+                        <div class="col-md-3 text-center">
+                            <h6 class="fw-bold mb-3 text-secondary">GT vs YOLOv11</h6>
                             <img src="${imgData.baseline_image}?t=${t}" class="img-fluid rounded shadow-sm w-100" style="object-fit: contain; max-height: 400px; background: #000;">
                         </div>
-                        <div class="col-md-6 text-center">
+                        <div class="col-md-3 text-center">
+                            <h6 class="fw-bold mb-3" style="color: #ffc107;">Heatmap (YOLOv11)</h6>
+                            <img src="${imgData.baseline_heatmap}?t=${t}" class="img-fluid rounded shadow-sm w-100" style="object-fit: contain; max-height: 400px; background: #000;">
+                        </div>
+                        <div class="col-md-3 text-center">
                             <h6 class="fw-bold mb-3 text-secondary">GT vs SAHI</h6>
                             <img src="${imgData.sahi_image}?t=${t}" class="img-fluid rounded shadow-sm w-100" style="object-fit: contain; max-height: 400px; background: #000;">
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <h6 class="fw-bold mb-3" style="color: #ffc107;">Heatmap (SAHI)</h6>
+                            <img src="${imgData.sahi_heatmap}?t=${t}" class="img-fluid rounded shadow-sm w-100" style="object-fit: contain; max-height: 400px; background: #000;">
                         </div>
                     </div>
                 </div>

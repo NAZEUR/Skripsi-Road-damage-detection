@@ -106,7 +106,7 @@
                     <span id="confidenceValue">25</span>%
                 </div>
                 <input type="range" class="slider" id="confidenceSlider" 
-                       min="10" max="90" value="25" step="5">
+                       min="10" max="90" value="25" step="1">
                 <div class="slider-labels">
                     <span>0%</span>
                     <span>50%</span>
@@ -114,55 +114,12 @@
                 </div>
             </div>
 
-            <!-- SAHI Parameters (hidden by default) -->
-            <div id="sahiParams" class="d-none">
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title" data-i18n="sidebar.slice">SLICE SIZE</h3>
-                    <div class="slider-value-display">
-                        <span id="sliceSizeValue">640</span>px
-                    </div>
-                    <input type="range" class="slider" id="sliceSizeSlider" 
-                           min="320" max="1024" value="640" step="32">
-                    <div class="slider-labels">
-                        <span>320</span>
-                        <span>672</span>
-                        <span>1024</span>
-                    </div>
-                </div>
+            <!-- SAHI Parameters (removed) -->
 
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title" data-i18n="sidebar.overlap">OVERLAP RATIO</h3>
-                    <div class="slider-value-display">
-                        <span id="overlapValue">0.20</span>
-                    </div>
-                    <input type="range" class="slider" id="overlapSlider" 
-                           min="0.1" max="0.5" value="0.2" step="0.05">
-                    <div class="slider-labels">
-                        <span>0.1</span>
-                        <span>0.3</span>
-                        <span>0.5</span>
-                    </div>
-                </div>
-
-                <div class="sidebar-section">
-                    <h3 class="sidebar-title" data-i18n="sidebar.match">MATCH THRESHOLD</h3>
-                    <div class="slider-value-display">
-                        <span id="matchValue">0.50</span>
-                    </div>
-                    <input type="range" class="slider" id="matchSlider" 
-                           min="0.3" max="0.7" value="0.5" step="0.05">
-                    <div class="slider-labels">
-                        <span>0.3</span>
-                        <span>0.5</span>
-                        <span>0.7</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Run Analysis Button -->
+            <!-- Start Detection Button -->
             <button id="runAnalysisBtn" class="btn-run-analysis" onclick="runDetection()" disabled>
                 <i class="bi bi-play-circle-fill"></i>
-                <span data-i18n="btn.run">Run Analysis</span>
+                <span data-i18n="btn.run">Start Detection</span>
             </button>
 
         </aside>
@@ -182,6 +139,7 @@
                 <div class="header-labels">
                     <div class="label-box" data-i18n="header.original">ORIGINAL IMAGE PREVIEW</div>
                     <div class="label-box highlight-label" data-i18n="header.result">DETECTION RESULT</div>
+                    <div class="label-box highlight-label" style="background: var(--warning-color);" data-i18n="header.heatmap">HEATMAP RESULT</div>
                 </div>
             </div>
 
@@ -219,6 +177,17 @@
                             </div>
                             <p class="loading-text" data-i18n="loading.text">Processing detection...</p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Heatmap Result -->
+                <div class="image-panel">
+                    <div id="heatmapImageContainer" class="image-container">
+                        <div id="heatmapEmptyState" class="empty-state">
+                            <div class="icon-circle" style="color: var(--warning-color); background: rgba(255, 193, 7, 0.1);"><i class="bi bi-fire"></i></div>
+                            <p data-i18n="empty.heatmap">Detection not run yet</p>
+                        </div>
+                        <img id="heatmapImage" class="display-image d-none" alt="Heatmap">
                     </div>
                 </div>
             </div>

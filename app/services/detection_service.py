@@ -173,6 +173,37 @@ class DetectionService:
             
         except Exception as e:
             raise RuntimeError(f"Visualization failed: {str(e)}")
+
+    def visualize_heatmap(
+        self,
+        image_path: str,
+        detections: Dict[str, Any],
+        output_filename: str
+    ) -> str:
+        """
+        Visualize detection heatmap and save output image.
+        """
+        try:
+            # Load image
+            image = self.file_handler.load_image(image_path)
+            
+            # Generate output path
+            output_path = self.file_handler.get_output_path(
+                output_filename,
+                suffix="_heatmap"
+            )
+            
+            # Save visualization
+            result_path = self.visualizer.save_heatmap_visualization(
+                image=image,
+                detections=detections,
+                output_path=output_path
+            )
+            
+            return result_path
+            
+        except Exception as e:
+            raise RuntimeError(f"Heatmap visualization failed: {str(e)}")
     
     def calculate_statistics(
         self,
@@ -335,6 +366,13 @@ class DetectionService:
                 output_filename=original_filename
             )
             
+            # Heatmap
+            output_heatmap_path = self.visualize_heatmap(
+                image_path=image_path,
+                detections=detections,
+                output_filename=original_filename
+            )
+            
             # Export JSON
             output_json_path = self.export_json(
                 detections=detections,
@@ -348,6 +386,7 @@ class DetectionService:
                 'statistics': statistics,
                 'output': {
                     'image': output_image_path,
+                    'heatmap': output_heatmap_path,
                     'json': output_json_path
                 }
             }

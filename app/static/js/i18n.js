@@ -19,7 +19,7 @@ const translations = {
         "sidebar.slice": "SLICE SIZE",
         "sidebar.overlap": "OVERLAP RATIO",
         "sidebar.match": "MATCH THRESHOLD",
-        "btn.run": "Run Analysis",
+        "btn.run": "Start Detection",
         "status.system": "System Status: ",
         "status.online": "Online",
         "status.gpu": "Hardware: ",
@@ -28,6 +28,7 @@ const translations = {
         "empty.original": "No image uploaded",
         "btn.upload": "Upload Image(s) / ZIP",
         "empty.result": "Detection not run yet",
+        "empty.heatmap": "Heatmap not generated yet",
         "loading.text": "Processing detection...",
         "sidebar.session": "SESSION ANALYSIS",
         "defects.total": "Total Defects",
@@ -62,6 +63,8 @@ const translations = {
         "eval.metrics": "Evaluation Metrics",
         "eval.model": "Model",
         "btn.export": "Export JSON",
+        "btn.evaluate": "Evaluate",
+        "eval.select_all": "Select All",
         "footer.text": "© 2024 Road Damage Detection System | Undergraduate Thesis Project"
     },
     id: {
@@ -84,7 +87,7 @@ const translations = {
         "sidebar.slice": "UKURAN POTONGAN",
         "sidebar.overlap": "RASIO TUMPANG TINDIH",
         "sidebar.match": "AMBANG KECOCOKAN",
-        "btn.run": "Jalankan Analisis",
+        "btn.run": "Mulai Deteksi ",
         "status.system": "Status Sistem: ",
         "status.online": "Daring",
         "status.gpu": "Perangkat: ",
@@ -93,6 +96,7 @@ const translations = {
         "empty.original": "Belum ada citra terunggah",
         "btn.upload": "Unggah Citra / ZIP",
         "empty.result": "Deteksi belum dijalankan",
+        "empty.heatmap": "Heatmap belum dihasilkan",
         "loading.text": "Memproses deteksi... Mohon tunggu",
         "sidebar.session": "ANALISIS SESI",
         "defects.total": "Total Kerusakan",
@@ -127,6 +131,8 @@ const translations = {
         "eval.metrics": "Metrik Evaluasi",
         "eval.model": "Model",
         "btn.export": "Ekspor JSON",
+        "btn.evaluate": "Evaluasi",
+        "eval.select_all": "Pilih Semua",
         "footer.text": "© 2024 Sistem Deteksi Kerusakan Jalan | Proyek Skripsi"
     }
 };

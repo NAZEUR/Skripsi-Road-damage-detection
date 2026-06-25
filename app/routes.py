@@ -185,14 +185,17 @@ def detect():
         
         # Convert absolute paths to relative URLs for frontend
         output_image_path = result['output']['image']
+        output_heatmap_path = result['output']['heatmap']
         output_json_path = result['output']['json']
         
         # Extract just the filename from the path
         image_filename = Path(output_image_path).name
+        heatmap_filename = Path(output_heatmap_path).name
         json_filename = Path(output_json_path).name
         
         # Create URLs that the frontend can access
         image_url = f"/view/{image_filename}"
+        heatmap_url = f"/view/{heatmap_filename}"
         json_url = f"/download/{json_filename}"
         
         # Prepare response
@@ -211,6 +214,7 @@ def detect():
             'statistics': result['statistics'],
             'output': {
                 'image': image_url,
+                'heatmap': heatmap_url,
                 'json': json_url
             }
         }
@@ -578,6 +582,9 @@ def api_evaluate_batch():
             baseline_filename = f"baseline_merged_{filename}"
             detection_service.visualizer.save_merged_visualization(img, gts, baseline_res, Config.OUTPUT_FOLDER / baseline_filename)
             
+            baseline_heatmap_filename = f"baseline_heatmap_{filename}"
+            detection_service.visualizer.save_heatmap_visualization(img, baseline_res, Config.OUTPUT_FOLDER / baseline_heatmap_filename)
+            
             baseline_gts_list.append(gts)
             baseline_preds_list.append(baseline_res)
             baseline_dims_list.append((img_w, img_h))
@@ -595,6 +602,9 @@ def api_evaluate_batch():
             sahi_filename = f"sahi_merged_{filename}"
             detection_service.visualizer.save_merged_visualization(img, gts, sahi_res, Config.OUTPUT_FOLDER / sahi_filename)
             
+            sahi_heatmap_filename = f"sahi_heatmap_{filename}"
+            detection_service.visualizer.save_heatmap_visualization(img, sahi_res, Config.OUTPUT_FOLDER / sahi_heatmap_filename)
+            
             sahi_gts_list.append(gts)
             sahi_preds_list.append(sahi_res)
             sahi_dims_list.append((img_w, img_h))
@@ -602,7 +612,9 @@ def api_evaluate_batch():
             results.append({
                 'filename': filename,
                 'baseline_image': f"/view/{baseline_filename}",
-                'sahi_image': f"/view/{sahi_filename}"
+                'baseline_heatmap': f"/view/{baseline_heatmap_filename}",
+                'sahi_image': f"/view/{sahi_filename}",
+                'sahi_heatmap': f"/view/{sahi_heatmap_filename}"
             })
             
         baseline_metrics = eval_service.calculate_batch_metrics(baseline_gts_list, baseline_preds_list, baseline_dims_list)

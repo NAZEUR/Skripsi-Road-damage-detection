@@ -74,34 +74,10 @@ function setupSliders() {
   confSlider.addEventListener("input", () => {
     confValue.textContent = confSlider.value;
   });
-  const sliceSlider = document.getElementById("sliceSizeSlider");
-  const sliceValue = document.getElementById("sliceSizeValue");
-  sliceSlider.addEventListener("input", () => {
-    sliceValue.textContent = sliceSlider.value;
-  });
-  const overlapSlider = document.getElementById("overlapSlider");
-  const overlapValue = document.getElementById("overlapValue");
-  overlapSlider.addEventListener("input", () => {
-    overlapValue.textContent = parseFloat(overlapSlider.value).toFixed(2);
-  });
-  const matchSlider = document.getElementById("matchSlider");
-  const matchValue = document.getElementById("matchValue");
-  matchSlider.addEventListener("input", () => {
-    matchValue.textContent = parseFloat(matchSlider.value).toFixed(2);
-  });
+
 }
 function setupDetectionMode() {
-  const radios = document.querySelectorAll('input[name="detectionMode"]');
-  radios.forEach((radio) => {
-    radio.addEventListener("change", () => {
-      const sahiParams = document.getElementById("sahiParams");
-      if (radio.value === "sahi") {
-        sahiParams.classList.remove("d-none");
-      } else {
-        sahiParams.classList.add("d-none");
-      }
-    });
-  });
+  // SAHI parameters are now using defaults, so no UI toggle needed
 }
 async function handleFileSelect(event) {
   const file = event.target.files[0];
@@ -189,8 +165,10 @@ function clearUpload() {
   document.getElementById("fileInput").value = "";
   document.getElementById("originalImage").classList.add("d-none");
   document.getElementById("resultImage").classList.add("d-none");
+  document.getElementById("heatmapImage").classList.add("d-none");
   document.getElementById("emptyState").style.display = "block";
   document.getElementById("resultEmptyState").style.display = "block";
+  document.getElementById("heatmapEmptyState").style.display = "block";
   document.getElementById("fileInfo").classList.add("d-none");
   document.getElementById("runAnalysisBtn").disabled = true;
   disableExportButtons();
@@ -211,20 +189,7 @@ async function runDetection() {
     const confidence =
       parseFloat(document.getElementById("confidenceSlider").value) / 100;
     const paramsTemplate = { mode: mode, confidence: confidence };
-    if (mode === "sahi") {
-      paramsTemplate.slice_height = parseInt(
-        document.getElementById("sliceSizeSlider").value,
-      );
-      paramsTemplate.slice_width = parseInt(
-        document.getElementById("sliceSizeSlider").value,
-      );
-      paramsTemplate.overlap_ratio = parseFloat(
-        document.getElementById("overlapSlider").value,
-      );
-      paramsTemplate.match_threshold = parseFloat(
-        document.getElementById("matchSlider").value,
-      );
-    }
+    // SAHI parameters now use backend defaults
     showLoading();
 
     // Process queue sequentially
@@ -305,6 +270,7 @@ function displayResults(data, callback = null) {
   // data is already the response data (passed as data.data from runDetection)
   outputImagePath = data.output.image;
   outputJSONPath = data.output.json;
+  const heatmapPath = data.output.heatmap;
 
   // Create a new image to preload and verify it loads
   const preloadImg = new Image();
@@ -315,6 +281,13 @@ function displayResults(data, callback = null) {
     resultImg.classList.remove("d-none");
     document.getElementById("resultEmptyState").style.display = "none";
     resultContainer.classList.remove("loading");
+    
+    if (heatmapPath) {
+      const heatmapImg = document.getElementById("heatmapImage");
+      heatmapImg.src = heatmapPath + "?t=" + new Date().getTime();
+      heatmapImg.classList.remove("d-none");
+      document.getElementById("heatmapEmptyState").style.display = "none";
+    }
 
     // Update statistics
     updateStatistics(data);

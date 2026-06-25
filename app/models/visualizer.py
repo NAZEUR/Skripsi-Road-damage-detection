@@ -39,6 +39,8 @@ class DetectionVisualizer:
         """
         # Create a copy to avoid modifying original
         output_image = image.copy()
+        overlay = image.copy()
+        texts_to_draw = []
         
         boxes = detections.get('boxes', [])
         scores = detections.get('scores', [])
@@ -54,7 +56,7 @@ class DetectionVisualizer:
             
             # Draw bounding box
             cv2.rectangle(
-                output_image,
+                overlay,
                 (x1, y1),
                 (x2, y2),
                 color,
@@ -75,22 +77,36 @@ class DetectionVisualizer:
             # Draw label background
             label_y = max(y1 - 10, text_height + self.text_padding)
             cv2.rectangle(
-                output_image,
+                overlay,
                 (x1, label_y - text_height - self.text_padding),
                 (x1 + text_width + self.text_padding * 2, label_y + baseline),
                 color,
                 -1  # Filled rectangle
             )
             
-            # Draw label text
+            # Queue label text to draw later on top of blended image
+            texts_to_draw.append({
+                "text": label,
+                "pos": (x1 + self.text_padding, label_y - baseline),
+                "scale": self.font_scale,
+                "color": (255, 255, 255),  # White text
+                "thickness": self.font_thickness
+            })
+        
+        # Apply transparency to boxes and backgrounds
+        alpha = 0.5  # Adjust this value to make overlay more/less transparent
+        cv2.addWeighted(overlay, alpha, output_image, 1 - alpha, 0, output_image)
+        
+        # Draw all text on the blended image so it remains fully legible
+        for t in texts_to_draw:
             cv2.putText(
                 output_image,
-                label,
-                (x1 + self.text_padding, label_y - baseline),
+                t["text"],
+                t["pos"],
                 self.font,
-                self.font_scale,
-                (255, 255, 255),  # White text
-                self.font_thickness,
+                t["scale"],
+                t["color"],
+                t["thickness"],
                 cv2.LINE_AA
             )
         
@@ -145,6 +161,8 @@ class DetectionVisualizer:
         Ground truth boxes are drawn with a distinct color and style to differentiate.
         """
         output_image = image.copy()
+        overlay = image.copy()
+        texts_to_draw = []
         
         # 1. Draw Ground Truths (Green boxes)
         gt_color = (0, 255, 0) # Green for GT
@@ -168,13 +186,20 @@ class DetectionVisualizer:
             class_name = self.class_names.get(cls_id, f"Class {cls_id}")
             
             # Draw GT box (slightly thicker, solid)
-            cv2.rectangle(output_image, (x1, y1), (x2, y2), gt_color, self.box_thickness + 1)
+            cv2.rectangle(overlay, (x1, y1), (x2, y2), gt_color, self.box_thickness)
             
             label = f"{class_name} [GT]"
             (text_width, text_height), baseline = cv2.getTextSize(label, self.font, self.font_scale, self.font_thickness)
             label_y = max(y1 - 10, text_height + self.text_padding)
-            cv2.rectangle(output_image, (x1, label_y - text_height - self.text_padding), (x1 + text_width + self.text_padding * 2, label_y + baseline), gt_color, -1)
-            cv2.putText(output_image, label, (x1 + self.text_padding, label_y - baseline), self.font, self.font_scale, (0, 0, 0), self.font_thickness, cv2.LINE_AA)
+            cv2.rectangle(overlay, (x1, label_y - text_height - self.text_padding), (x1 + text_width + self.text_padding * 2, label_y + baseline), gt_color, -1)
+            
+            texts_to_draw.append({
+                "text": label,
+                "pos": (x1 + self.text_padding, label_y - baseline),
+                "scale": self.font_scale,
+                "color": (0, 0, 0),
+                "thickness": self.font_thickness
+            })
 
         # 2. Draw Predictions (Using class colors, slightly thinner or standard)
         boxes = predictions.get('boxes', [])
@@ -191,14 +216,29 @@ class DetectionVisualizer:
             class_name = self.class_names.get(cls, f"Class {cls}")
             
             # Draw Pred box (dashed effect could be done but standard rect is simpler, maybe thinner)
-            cv2.rectangle(output_image, (x1, y1), (x2, y2), color, max(1, self.box_thickness - 1))
+            cv2.rectangle(overlay, (x1, y1), (x2, y2), color, max(1, self.box_thickness - 1))
             
             label = f"{class_name} [Pred]: {score:.2f}"
             (text_width, text_height), baseline = cv2.getTextSize(label, self.font, self.font_scale * 0.8, self.font_thickness - 1)
             # Put label at the bottom of the box to avoid overlapping GT label at the top
             label_y = min(y2 + text_height + self.text_padding, img_h - 10)
-            cv2.rectangle(output_image, (x1, label_y - text_height - self.text_padding), (x1 + text_width + self.text_padding * 2, label_y + baseline), color, -1)
-            cv2.putText(output_image, label, (x1 + self.text_padding, label_y - baseline), self.font, self.font_scale * 0.8, (255, 255, 255), self.font_thickness - 1, cv2.LINE_AA)
+            cv2.rectangle(overlay, (x1, label_y - text_height - self.text_padding), (x1 + text_width + self.text_padding * 2, label_y + baseline), color, -1)
+            
+            texts_to_draw.append({
+                "text": label,
+                "pos": (x1 + self.text_padding, label_y - baseline),
+                "scale": self.font_scale * 0.8,
+                "color": (255, 255, 255),
+                "thickness": self.font_thickness - 1
+            })
+
+        # Apply transparency to both GT and Prediction boxes
+        alpha = 0.5  # Transparency level
+        cv2.addWeighted(overlay, alpha, output_image, 1 - alpha, 0, output_image)
+        
+        # Draw all text on the blended image so it remains fully legible
+        for t in texts_to_draw:
+            cv2.putText(output_image, t["text"], t["pos"], self.font, t["scale"], t["color"], t["thickness"], cv2.LINE_AA)
 
         return output_image
         
@@ -221,6 +261,73 @@ class DetectionVisualizer:
             return str(output_path)
         except Exception as e:
             raise RuntimeError(f"Merged visualization failed: {str(e)}")
+
+    def save_heatmap_visualization(
+        self,
+        image: np.ndarray,
+        detections: Dict[str, Any],
+        output_path: Path
+    ) -> str:
+        """
+        Draw a heatmap based on detections and save result image.
+        """
+        try:
+            h, w = image.shape[:2]
+            # Create empty heatmap
+            heatmap = np.zeros((h, w), dtype=np.float32)
+            
+            boxes = detections.get('boxes', [])
+            scores = detections.get('scores', [])
+            
+            for box, score in zip(boxes, scores):
+                x1, y1, x2, y2 = map(int, box)
+                
+                # Center of the box
+                cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+                
+                # Radius based on box size
+                radius_x = max((x2 - x1) // 2, 10)
+                radius_y = max((y2 - y1) // 2, 10)
+                
+                # Create a local grid
+                Y, X = np.ogrid[-cy:h-cy, -cx:w-cx]
+                
+                # Gaussian blob
+                sigma_x = radius_x / 2.0
+                sigma_y = radius_y / 2.0
+                
+                blob = np.exp(-(X**2 / (2 * sigma_x**2) + Y**2 / (2 * sigma_y**2)))
+                # Scale by confidence score
+                blob = blob * score
+                
+                # Add to heatmap
+                heatmap = np.maximum(heatmap, blob)
+                
+            # Normalize heatmap
+            if np.max(heatmap) > 0:
+                heatmap = (heatmap / np.max(heatmap) * 255).astype(np.uint8)
+            else:
+                heatmap = heatmap.astype(np.uint8)
+                
+            # Apply colormap
+            heatmap_colored = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+            
+            # Overlay on original image with transparency
+            output_image = cv2.addWeighted(image, 0.5, heatmap_colored, 0.5, 0)
+            
+            # Ensure output directory exists
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Save image
+            success = cv2.imwrite(str(output_path), output_image)
+            
+            if not success:
+                raise RuntimeError("Failed to save heatmap image")
+            
+            return str(output_path)
+            
+        except Exception as e:
+            raise RuntimeError(f"Heatmap visualization failed: {str(e)}")
     
     def create_side_by_side(
         self,

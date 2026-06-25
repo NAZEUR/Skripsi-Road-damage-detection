@@ -526,6 +526,8 @@ h1, h2, h3, h4, h5, h6, .brand-text {
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  min-height: 0;
+  min-width: 0;
 }
 
 .content-header {

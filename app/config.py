@@ -25,10 +25,10 @@ class Config:
     
     # Detection parameters - defaults
     DEFAULT_CONF_THRESHOLD = 0.25
-    DEFAULT_SLICE_HEIGHT = 640
-    DEFAULT_SLICE_WIDTH = 640
+    DEFAULT_SLICE_HEIGHT = 896
+    DEFAULT_SLICE_WIDTH = 896
     DEFAULT_OVERLAP_RATIO = 0.2
-    DEFAULT_MATCH_THRESHOLD = 0.5
+    DEFAULT_MATCH_THRESHOLD = 0.4
     
     # Detection parameters - ranges
     MIN_CONF_THRESHOLD = 0.1

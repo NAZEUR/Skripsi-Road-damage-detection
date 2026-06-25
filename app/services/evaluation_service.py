@@ -54,6 +54,10 @@ class EvaluationService:
         if image is None:
             raise RuntimeError(f"Could not load image {image_filename}")
             
+        output_image = image.copy()
+        overlay = image.copy()
+        texts_to_draw = []
+        
         h, w = image.shape[:2]
         gts = self.load_ground_truth(image_filename)
         
@@ -75,7 +79,7 @@ class EvaluationService:
             color = Config.CLASS_COLORS.get(cls_id, (255, 255, 255))
             label = Config.CLASS_NAMES.get(cls_id, f"Class {cls_id}") + " [GT]"
             
-            cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
+            cv2.rectangle(overlay, (x1, y1), (x2, y2), color, 2)
             
             # Label
             font = cv2.FONT_HERSHEY_SIMPLEX
@@ -83,11 +87,23 @@ class EvaluationService:
             thickness = 1
             text_size = cv2.getTextSize(label, font, font_scale, thickness)[0]
             
-            cv2.rectangle(image, (x1, y1 - text_size[1] - 5), (x1 + text_size[0], y1), color, -1)
-            cv2.putText(image, label, (x1, y1 - 5), font, font_scale, (0, 0, 0), thickness)
+            cv2.rectangle(overlay, (x1, y1 - text_size[1] - 5), (x1 + text_size[0], y1), color, -1)
+            texts_to_draw.append({
+                "text": label,
+                "pos": (x1, y1 - 5),
+                "scale": font_scale,
+                "color": (0, 0, 0),
+                "thickness": thickness
+            })
+            
+        alpha = 0.35
+        cv2.addWeighted(overlay, alpha, output_image, 1 - alpha, 0, output_image)
+        
+        for t in texts_to_draw:
+            cv2.putText(output_image, t["text"], t["pos"], cv2.FONT_HERSHEY_SIMPLEX, t["scale"], t["color"], t["thickness"])
             
         output_filename = f"GT_{image_filename}"
-        self.file_handler.save_image(image, output_filename)
+        self.file_handler.save_image(output_image, output_filename)
         return output_filename
 
     def _calculate_iou(self, box1: List[float], box2: List[float]) -> float:
